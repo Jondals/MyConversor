@@ -1,0 +1,496 @@
+<header class="slide mb-6 md:mb-8">
+  <p class="label-mark text-yellow">{{ t('trim.module') }}</p>
+  <h1 class="headline mt-3">{{ t('trim.title') }}</h1>
+  <p class="mt-2 max-w-2xl text-muted">
+    {{ t('trim.subtitle') }}
+  </p>
+</header>
+
+<input
+  #picker
+  id="trim-file"
+  type="file"
+  accept="video/*,audio/*"
+  class="sr-only"
+  (change)="pick(picker)"
+/>
+
+@if (!source()) {
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
+    <label
+      for="trim-file"
+      class="pane rise flex flex-col items-center justify-center gap-4 border-dashed! px-6 py-16 text-center transition-colors hover:border-yellow! md:py-24"
+      (dragover)="$event.preventDefault()"
+      (drop)="onDrop($event)"
+    >
+      <span class="grid size-16 place-items-center border border-yellow text-yellow">
+        <app-icon name="upload" [size]="26" />
+      </span>
+      <span class="text-lg font-bold uppercase">{{ t('trim.drop') }}</span>
+      <span class="text-sm text-muted"
+        >{{ t('trim.dropText') }}</span
+      >
+    </label>
+
+    <section class="pane rise" style="--d: 80ms" aria-labelledby="trim-lib">
+      <h2 id="trim-lib" class="pane-head label-mark text-text">{{ t('common.fromLibrary') }}</h2>
+      <ul>
+        @for (f of libraryMedia(); track f.id) {
+          <li>
+            <button
+              type="button"
+              class="hover-rail flex w-full items-center gap-3 border-b border-line-soft px-4 py-3 text-left"
+              (click)="openFile(f)"
+            >
+              <app-icon
+                [name]="f.kind === 'audio' ? 'music' : 'film'"
+                [size]="16"
+                class="text-yellow"
+              />
+              <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ f.name }}</span>
+              <span class="label">{{ f.ext }} · {{ dur(f.duration) }}</span>
+            </button>
+          </li>
+        } @empty {
+          <li class="p-6 text-sm text-muted">
+            {{ store.guest() ? t('common.libraryGuest') : t('trim.hint') }}
+          </li>
+        }
+      </ul>
+    </section>
+  </div>
+} @else {
+  @let s = source()!;
+  <div class="pane rise mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
+    <p class="flex min-w-0 flex-1 basis-full items-center gap-2 text-sm font-bold sm:basis-auto">
+      <app-icon [name]="hasVideo() ? 'film' : 'music'" [size]="16" class="text-yellow" />
+      <span class="truncate"
+        >{{ s.name }}<span class="text-dim">.{{ s.ext }}</span></span
+      >
+    </p>
+    @if (s.platform) {
+      <span class="tag border-yellow! text-yellow!">{{ s.platform }}</span>
+    }
+    <span class="label">{{ bytes(s.size) }}</span>
+    @if (s.width) {
+      <span class="label">{{ s.width }}×{{ s.height }}</span>
+    }
+    <label for="trim-file" class="btn btn-secondary min-h-9 px-3 text-xs md:text-[11px]"
+      >{{ t('common.change') }}</label
+    >
+    <button type="button" class="btn btn-secondary btn-danger min-h-9 px-3 text-xs md:text-[11px]" (click)="deleteSource()">
+      <app-icon name="trash" [size]="14" /> {{ t('common.delete') }}
+    </button>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+    <div class="flex min-w-0 flex-col gap-6">
+      <section class="pane rise overflow-hidden" [attr.aria-label]="t('trim.monitor')">
+        <div class="pane-head flex-wrap">
+          <span class="label-mark text-text">{{ t('trim.monitor') }}</span>
+          @if (hasVideo()) {
+            <div class="ml-auto flex overflow-x-auto" role="group" [attr.aria-label]="t('trim.aspect')">
+              @for (a of aspects; track a.id) {
+                <button
+                  type="button"
+                  class="chip min-h-8 -ml-px shrink-0 px-2.5"
+                  [attr.aria-pressed]="aspect().id === a.id"
+                  (click)="setAspect(a)"
+                >
+                  {{ a.id === 'original' ? t('trim.original') : a.label }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="grid place-items-center bg-black p-3">
+          <div
+            class="relative max-h-[52vh] w-full overflow-hidden"
+            [style.aspect-ratio]="
+              !hasVideo() ? '16 / 3' : aspect().id === 'original' ? originalRatio() : aspect().ratio
+            "
+            [style.max-width]="
+              aspect().id === '9:16' ? '29vh' : aspect().id === '1:1' ? '52vh' : null
+            "
+          >
+            <video
+              #video
+              class="size-full"
+              [class.object-contain]="aspect().id === 'original'"
+              [class.object-cover]="aspect().id !== 'original'"
+              [src]="s.url"
+              playsinline
+              preload="auto"
+              (loadedmetadata)="onMeta(video)"
+              (error)="onVideoError()"
+              (play)="onPlay()"
+              (pause)="onPause()"
+              (click)="togglePlay()"
+            ></video>
+            @if (!hasVideo()) {
+              <div
+                class="pointer-events-none absolute inset-0 flex items-center justify-center gap-1"
+              >
+                @for (b of [3, 6, 9, 5, 8, 4, 7, 10, 6, 3, 8, 5]; track $index) {
+                  <span
+                    class="w-1.5 bg-blue"
+                    [style.height.px]="b * 4"
+                    [class.animate-pulse]="playing()"
+                  ></span>
+                }
+              </div>
+            }
+            <span class="tag pointer-events-none absolute top-2 left-2 bg-black/70 text-yellow!">
+              TC {{ tc(current()) }}
+            </span>
+            @if (previewError()) {
+              <p
+                class="absolute inset-0 grid place-items-center bg-black/80 p-6 text-center text-sm text-muted"
+              >
+                {{ t('trim.previewError') }}
+              </p>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 border-t border-line-soft p-3">
+          <button
+            type="button"
+            class="btn-icon"
+            [attr.aria-label]="t('trim.toIn')"
+            (click)="seek(inPoint())"
+          >
+            <app-icon name="back" [size]="14" />
+          </button>
+          <button type="button" class="btn-icon" [attr.aria-label]="t('trim.prevFrame')" (click)="step(-1)">
+            <app-icon name="chevronLeft" [size]="16" />
+          </button>
+          <button type="button" class="btn btn-primary min-h-10 min-w-28" (click)="togglePlay()">
+            <app-icon [name]="playing() ? 'pause' : 'play'" [size]="14" />
+            {{ playing() ? t('trim.pause') : t('trim.play') }}
+          </button>
+          <button type="button" class="btn-icon" [attr.aria-label]="t('trim.nextFrame')" (click)="step(1)">
+            <app-icon name="chevronRight" [size]="16" />
+          </button>
+          <button
+            type="button"
+            class="btn-icon"
+            [attr.aria-label]="t('trim.toOut')"
+            (click)="seek(outPoint())"
+          >
+            <app-icon name="forward" [size]="14" />
+          </button>
+          <p class="px-2 text-sm text-muted">
+            <span class="label">{{ t('trim.position') }}</span>
+            <b class="ml-1 text-lg text-yellow tabular-nums">{{ tc(current()) }}</b>
+            <span class="text-dim"> / {{ tc(duration()) }}</span>
+          </p>
+          <div class="ml-auto flex w-full items-center gap-2 sm:w-56">
+            <button
+              type="button"
+              class="btn-icon"
+              [class.border-red!]="muted()"
+              [class.text-red-text!]="muted()"
+              [attr.aria-label]="muted() ? t('trim.unmute') : t('trim.mute')"
+              [attr.aria-pressed]="muted()"
+              (click)="muted.set(!muted())"
+            >
+              <app-icon [name]="muted() ? 'mute' : 'volume'" [size]="16" />
+            </button>
+            <label for="vol" class="sr-only">{{ t('trim.volume') }}</label>
+            <input
+              id="vol"
+              type="range"
+              class="range flex-1"
+              min="0"
+              max="200"
+              step="5"
+              [value]="volume() * 100"
+              (input)="setVolume(+$any($event.target).value)"
+            />
+            <span
+              class="w-11 text-right text-xs font-bold"
+              [class]="muted() ? 'text-red-text' : 'text-text'"
+            >
+              {{ muted() ? 'MUTE' : (volume() * 100 | number: '1.0-0') + '%' }}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section class="pane rise" style="--d: 60ms" aria-labelledby="timeline-title">
+        <div class="pane-head">
+          <h2 id="timeline-title" class="label-mark text-text">{{ t('trim.timeline') }}</h2>
+          <p class="label ml-auto">
+            {{ t('trim.segment') }} <b class="ml-1 text-sm text-yellow tabular-nums">{{ tc(span()) }}</b>
+          </p>
+        </div>
+        <div class="px-4 pt-4 pb-5 md:px-6">
+          <div
+            class="mx-3 mb-2 flex justify-between text-xs md:text-[11px] font-bold text-dim tabular-nums"
+            aria-hidden="true"
+          >
+            @for (t of ticks(); track $index) {
+              <span>{{ tc(t).slice(0, 5) }}</span>
+            }
+          </div>
+
+          <div
+            #track
+            class="cursor-scrub relative mx-3 h-20 touch-none bg-base select-none"
+            (pointerdown)="startDrag($event)"
+          >
+            @if (strip(); as src) {
+              <img [src]="src" alt="" class="absolute inset-0 size-full object-fill" width="1920" height="90" (error)="onStripError()" />
+            }
+            <div class="absolute inset-0 flex overflow-hidden">
+              @for (f of frames(); track $index) {
+                <img
+                  [src]="f"
+                  alt=""
+                  class="h-full min-w-0 flex-1 object-cover"
+                  width="160"
+                  height="90"
+                />
+              }
+            </div>
+            <div
+              class="absolute inset-y-0 left-0 bg-base/80"
+              [style.width.%]="pct(inPoint())"
+            ></div>
+            <div
+              class="absolute inset-y-0 right-0 bg-base/80"
+              [style.width.%]="100 - pct(outPoint())"
+            ></div>
+            <div
+              class="pointer-events-none absolute inset-y-0 border-y-2 border-yellow"
+              [style.left.%]="pct(inPoint())"
+              [style.right.%]="100 - pct(outPoint())"
+            ></div>
+
+            <div
+              class="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-red"
+              [style.left.%]="pct(current())"
+            >
+              <span
+                class="absolute -top-2 left-1/2 size-3 -translate-x-1/2 rotate-45 bg-red"
+              ></span>
+              @if (dragging() === 'head') {
+                <span
+                  class="tag absolute -top-9 left-1/2 -translate-x-1/2 bg-red text-white! border-red!"
+                  >{{ tc(current()) }}</span
+                >
+              }
+            </div>
+
+            @for (h of ['in', 'out']; track h) {
+              <div
+                role="slider"
+                tabindex="0"
+                class="absolute inset-y-0 z-20 flex w-4 items-center justify-center bg-yellow transition-[filter] hover:brightness-110"
+                [class.-translate-x-full]="h === 'in'"
+                [style.left.%]="pct(h === 'in' ? inPoint() : outPoint())"
+                [attr.aria-label]="h === 'in' ? t('trim.startPoint') : t('trim.endPoint')"
+                aria-valuemin="0"
+                [attr.aria-valuemax]="duration()"
+                [attr.aria-valuenow]="h === 'in' ? inPoint() : outPoint()"
+                [attr.aria-valuetext]="tc(h === 'in' ? inPoint() : outPoint())"
+                (pointerdown)="startDrag($event, $any(h))"
+                (keydown)="handleKey($event, $any(h))"
+              >
+                <span class="h-7 w-0.5 bg-ink"></span>
+                @if (dragging() === h) {
+                  <span
+                    class="tag absolute -top-9 left-1/2 -translate-x-1/2 border-yellow! bg-yellow text-ink!"
+                  >
+                    {{ tc(h === 'in' ? inPoint() : outPoint()) }}
+                  </span>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="mt-4 hidden flex-wrap gap-x-5 gap-y-2 text-xs text-muted md:flex">
+            <span><span class="kbd">Espacio</span> {{ t('trim.keys.play') }}</span>
+            <span><span class="kbd">I</span> <span class="kbd">O</span> {{ t('trim.keys.mark') }}</span>
+            <span><span class="kbd">←</span> <span class="kbd">→</span> {{ t('trim.keys.frame') }}</span>
+            <span><span class="kbd">[</span> <span class="kbd">]</span> {{ t('trim.keys.jump') }}</span>
+            <span><span class="kbd">M</span> {{ t('trim.keys.mute') }}</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="flex flex-col gap-6">
+      <section class="pane rise" style="--d: 80ms" aria-labelledby="cut-title">
+        <h2 id="cut-title" class="pane-head label-mark text-text">{{ t('trim.params') }}</h2>
+        @if (hasVideo()) {
+          <div class="border-b border-line-soft p-4">
+            <p class="label mb-2">{{ t('trim.templates') }}</p>
+            <div class="grid grid-cols-2 gap-2">
+              @for (tpl of templates; track tpl.key) {
+                <button
+                  type="button"
+                  class="border p-2.5 text-left transition-colors"
+                  [class]="template() === tpl.key ? 'border-yellow bg-yellow/10' : 'border-line bg-base hover:border-dim'"
+                  [attr.aria-pressed]="template() === tpl.key"
+                  (click)="useTemplate(tpl.key, tpl.aspect)"
+                >
+                  <span class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold uppercase" [class.text-yellow]="template() === tpl.key">{{ t(tpl.key) }}</span>
+                    <span class="bg-overlay px-1 text-[10px] font-bold text-muted">{{ tpl.aspect }}</span>
+                  </span>
+                  <span class="mt-0.5 block text-xs text-muted">{{ tpl.size }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+        <div class="grid grid-cols-2 gap-3 p-4">
+          @for (h of ['in', 'out']; track h) {
+            <div class="border border-line bg-base p-3">
+              <label [for]="'tc-' + h" class="label">{{
+                h === 'in' ? t('trim.in') : t('trim.out')
+              }}</label>
+              <input
+                #field
+                [id]="'tc-' + h"
+                class="mt-1 w-full bg-transparent text-xl font-bold tabular-nums outline-none focus:text-yellow"
+                [value]="tc(h === 'in' ? inPoint() : outPoint())"
+                (keydown.enter)="field.blur()"
+                (blur)="typePoint($any(h), field)"
+                inputmode="decimal"
+              />
+              <div class="mt-2 grid grid-cols-[auto_auto_1fr] gap-1">
+                <button
+                  type="button"
+                  class="btn-icon size-8"
+                  [attr.aria-label]="t('trim.earlier') + ' · ' + (h === 'in' ? t('trim.in') : t('trim.out'))"
+                  (click)="nudge($any(h), -1 / 30)"
+                >
+                  <app-icon name="chevronLeft" [size]="14" />
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon size-8"
+                  [attr.aria-label]="t('trim.later') + ' · ' + (h === 'in' ? t('trim.in') : t('trim.out'))"
+                  (click)="nudge($any(h), 1 / 30)"
+                >
+                  <app-icon name="chevronRight" [size]="14" />
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary min-h-8 px-2 text-xs md:text-[10px]"
+                  (click)="markHere($any(h))"
+                >
+                  {{ t('trim.here') }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="pane rise" style="--d: 120ms" aria-labelledby="audio-title">
+        <h2 id="audio-title" class="pane-head label-mark text-text">{{ t('trim.audio') }}</h2>
+        <div class="p-4">
+          <div class="flex items-center justify-between">
+            <label for="vol2" class="label">{{ t('trim.volume') }}</label>
+            <b class="text-sm" [class]="muted() ? 'text-red-text' : 'text-yellow'">
+              {{ muted() ? t('trim.muted') : (volume() * 100 | number: '1.0-0') + ' %' }}
+            </b>
+          </div>
+          <input
+            id="vol2"
+            type="range"
+            class="range mt-2"
+            min="0"
+            max="200"
+            step="5"
+            [value]="volume() * 100"
+            (input)="setVolume(+$any($event.target).value)"
+          />
+          <div class="mt-3 flex items-center justify-between gap-4">
+            <p id="mute-label" class="text-sm font-semibold">{{ t('trim.removeAudio') }}</p>
+            <button
+              type="button"
+              role="switch"
+              class="switch"
+              [attr.aria-checked]="muted()"
+              aria-labelledby="mute-label"
+              (click)="muted.set(!muted())"
+            ></button>
+          </div>
+          <p class="mt-3 text-xs text-muted">
+            {{ t('trim.audioNote') }}
+          </p>
+        </div>
+      </section>
+
+      <section class="pane rise" style="--d: 160ms" aria-labelledby="out-title">
+        <h2 id="out-title" class="pane-head label-mark text-text">{{ t('trim.output') }}</h2>
+        <div class="p-4">
+          <label for="out-name" class="label mb-2 block">{{ t('dl.fileName') }}</label>
+          <div class="relative">
+            <input
+              id="out-name"
+              class="field pr-14"
+              maxlength="120"
+              [value]="fileName()"
+              (input)="fileName.set($any($event.target).value)"
+            />
+            <span class="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-dim"
+              >.{{ outExt() }}</span
+            >
+          </div>
+
+          <div class="mt-4 flex items-start justify-between gap-4">
+            <div>
+              <p id="lossless-label" class="text-sm font-semibold">{{ t('trim.lossless') }}</p>
+              <p class="mt-0.5 text-xs text-muted">
+                @if (aspect().id !== 'original') {
+                  {{ t('trim.reframeNote', { aspect: aspect().label }) }}
+                } @else if (audioEdited()) {
+                  {{ t('trim.audioOnlyNote') }}
+                } @else {
+                  {{ t('trim.copyNote') }}
+                }
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              class="switch mt-0.5"
+              [attr.aria-checked]="copies()"
+              [disabled]="aspect().id !== 'original'"
+              aria-labelledby="lossless-label"
+              (click)="lossless.set(!lossless())"
+            ></button>
+          </div>
+
+          <div class="mt-5 border border-line bg-base p-4">
+            <div class="flex items-center justify-between">
+              <p class="label">{{ t('trim.estimate') }}</p>
+              @if (saving() > 0) {
+                <span class="bg-yellow px-1.5 py-0.5 text-xs md:text-[11px] font-bold text-ink"
+                  >−{{ saving() }}%</span
+                >
+              }
+            </div>
+            <p class="mt-1 text-3xl font-bold">{{ bytes(estimate()) }}</p>
+            <div class="progress mt-3"><span [style.width.%]="100 - saving()"></span></div>
+            <p class="label mt-2">{{ aspect().out }} · {{ tc(span()) }}</p>
+          </div>
+
+          <button type="button" class="btn btn-primary mt-5 min-h-13 w-full" (click)="exportClip()">
+            <app-icon name="scissors" [size]="16" /> {{ t('trim.export') }}
+          </button>
+          <button type="button" class="btn btn-secondary mt-3 w-full" (click)="sendToConverter()">
+            <app-icon name="convert" [size]="16" /> {{ t('trim.toConverter') }}
+          </button>
+        </div>
+      </section>
+    </aside>
+  </div>
+}

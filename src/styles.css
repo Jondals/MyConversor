@@ -1,0 +1,769 @@
+@import 'tailwindcss';
+
+/* MyConversor design system — "Bauhaus Dark Studio": obsidian planes, hairline
+   borders, sharp corners, uppercase telemetry labels and electric primaries.
+   Also holds the motion (entrances, intro, animated backdrops). */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url('/fonts/space-grotesk.woff2') format('woff2');
+}
+
+@theme {
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Space Grotesk', ui-monospace, monospace;
+
+  --color-base: #0d0e12;
+  --color-raised: #141720;
+  --color-overlay: #1c202e;
+  --color-line: #282d3f;
+  --color-line-soft: #1e2230;
+  --color-text: #f8fafc;
+  --color-muted: #94a3b8;
+  /* DESIGN.md's #64748b fails WCAG AA on #0d0e12; this is the closest passing tone. */
+  --color-dim: #8391a7;
+
+  --color-yellow: #facc15;
+  --color-blue: #3b82f6;
+  --color-blue-text: #60a5fa;
+  --color-red: #ef4444;
+  --color-red-text: #f87171;
+  --color-ink: #0d0e12;
+
+  --radius-none: 0;
+  --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Custom cursors: sharp arrow outlined in yellow; filled yellow over controls;
+   an I-beam for typing; a ↔ bracket for the trim handles; a playhead for scrubbing. */
+:root {
+  --cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M3 2l15 7.5-6.5 1.8L8.7 18z' fill='%230d0e12' stroke='%23facc15' stroke-width='1.6' stroke-linejoin='miter'/%3E%3C/svg%3E")
+      3 2,
+    auto;
+  --cursor-hand:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M3 2l15 7.5-6.5 1.8L8.7 18z' fill='%23facc15' stroke='%230d0e12' stroke-width='1.4'/%3E%3Crect x='15' y='15' width='5' height='5' fill='%233b82f6'/%3E%3C/svg%3E")
+      3 2,
+    pointer;
+  --cursor-text:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M8 3h8v3h-2.5v12H16v3H8v-3h2.5V6H8z' fill='%23facc15' stroke='%230d0e12' stroke-width='1.2'/%3E%3C/svg%3E")
+      12 12,
+    text;
+  --cursor-trim:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M1 14l7-7v4h3V4h6v7h3V7l7 7-7 7v-4h-3v7h-6v-7H8v4z' fill='%23facc15' stroke='%230d0e12' stroke-width='1.3' stroke-linejoin='miter'/%3E%3C/svg%3E")
+      14 14,
+    ew-resize;
+  --cursor-scrub:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12 1l5 5-3.5 3.5V23h-3V9.5L7 6z' fill='%23ef4444' stroke='%230d0e12' stroke-width='1.2'/%3E%3C/svg%3E")
+      12 12,
+    col-resize;
+}
+
+@layer base {
+  html {
+    background: var(--color-base);
+    color: var(--color-text);
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-color: var(--color-line) var(--color-base);
+    cursor: var(--cursor);
+  }
+  body {
+    @apply font-sans antialiased;
+    min-height: 100dvh;
+    -webkit-touch-callout: none;
+  }
+  video {
+    -webkit-user-drag: none;
+  }
+  a,
+  button,
+  select,
+  label[for],
+  summary,
+  [role='button'],
+  [role='tab'],
+  [role='switch'] {
+    cursor: var(--cursor-hand);
+  }
+  input:not([type='range'], [type='checkbox'], [type='radio'], [type='file']),
+  textarea,
+  [contenteditable] {
+    cursor: var(--cursor-text);
+  }
+  [role='slider'],
+  .cursor-trim {
+    cursor: var(--cursor-trim);
+  }
+  .cursor-scrub {
+    cursor: var(--cursor-scrub);
+  }
+  input[type='range'] {
+    cursor: var(--cursor-hand);
+  }
+  /* While dragging on the timeline the cursor stays the same everywhere. */
+  html[data-drag='trim'] * {
+    cursor: var(--cursor-trim) !important;
+  }
+  html[data-drag='scrub'] * {
+    cursor: var(--cursor-scrub) !important;
+  }
+  svg,
+  img {
+    -webkit-user-drag: none;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  ::selection {
+    @apply bg-yellow text-ink;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 2px;
+  }
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------- typography */
+  .label {
+    @apply text-xs md:text-[11px] leading-[14px] font-bold tracking-[0.08em] text-dim uppercase;
+  }
+  .label-mark {
+    @apply flex items-center gap-2 text-xs md:text-[11px] leading-[14px] font-bold tracking-[0.08em] uppercase;
+  }
+  .label-mark::before {
+    content: '';
+    @apply size-2 shrink-0 bg-yellow;
+  }
+  .headline {
+    @apply text-[28px] leading-9 font-bold tracking-[-0.02em] uppercase md:text-[40px] md:leading-[48px];
+  }
+
+  /* --------------------------------------------------------------- panes */
+  .pane {
+    @apply border border-line bg-raised;
+  }
+  .pane-head {
+    @apply flex min-h-12 items-center gap-3 border-b border-line-soft px-4 py-3;
+  }
+
+  /* ------------------------------------------------------------- buttons */
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 text-[13px] font-bold tracking-[0.06em] uppercase select-none disabled:opacity-40;
+    transition:
+      background-color 0.12s ease-out,
+      color 0.12s ease-out,
+      border-color 0.12s ease-out,
+      box-shadow 0.12s ease-out,
+      transform 0.12s var(--ease-snap);
+  }
+  .btn:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: none !important;
+  }
+  .btn-primary {
+    @apply bg-yellow text-ink;
+    box-shadow: 3px 3px 0 0 #000;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-white;
+    box-shadow: 3px 3px 0 0 var(--color-yellow);
+  }
+  .btn-secondary {
+    @apply border border-line bg-raised text-text;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    @apply border-blue text-blue-text;
+  }
+  .btn-danger:hover:not(:disabled) {
+    @apply border-red text-red-text;
+  }
+  .btn-icon {
+    @apply inline-flex size-10 shrink-0 items-center justify-center border border-line bg-raised text-muted disabled:opacity-40;
+    transition:
+      color 0.12s ease-out,
+      border-color 0.12s ease-out,
+      transform 0.12s var(--ease-snap);
+  }
+  .btn-icon:hover:not(:disabled) {
+    @apply border-blue text-blue-text;
+  }
+  .btn-icon:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
+  /* --------------------------------------------------------------- chips */
+  .chip {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 border border-line bg-base px-3 text-xs md:text-[11px] font-bold tracking-[0.08em] text-muted uppercase;
+    transition:
+      color 0.1s ease-out,
+      background-color 0.1s ease-out,
+      border-color 0.1s ease-out,
+      transform 0.12s var(--ease-snap);
+  }
+  .chip:hover {
+    @apply border-dim text-text;
+  }
+  .chip:active {
+    transform: scale(0.97);
+  }
+  .chip[aria-pressed='true'],
+  .chip[aria-selected='true'] {
+    @apply border-yellow bg-yellow text-ink;
+  }
+  .tag {
+    @apply inline-flex items-center gap-1.5 border border-line px-2 py-1 text-xs md:text-[11px] leading-none font-bold tracking-[0.08em] text-muted uppercase;
+  }
+
+  /* -------------------------------------------------------------- fields */
+  .field {
+    @apply min-h-11 w-full border border-line bg-base px-3 text-sm placeholder:text-dim focus:border-yellow focus:outline-none;
+    /* Explicit colours: some browsers render typed/pasted URLs in black otherwise. */
+    color: var(--color-text);
+    -webkit-text-fill-color: var(--color-text);
+    caret-color: var(--color-yellow);
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+  }
+  .field::placeholder {
+    -webkit-text-fill-color: var(--color-dim);
+  }
+  .field:-webkit-autofill {
+    box-shadow: inset 0 0 0 100px var(--color-base);
+    -webkit-text-fill-color: var(--color-text);
+  }
+  /* Header dropdowns (language, options, account). */
+  .menu {
+    @apply absolute top-full z-50 mt-2 border border-line bg-raised text-text;
+    box-shadow: 4px 4px 0 0 #000;
+    animation: menu-in 0.18s var(--ease-snap) both;
+  }
+  .menu-item {
+    @apply flex w-full items-center gap-3 px-3 py-2.5 text-sm font-semibold text-muted;
+    transition:
+      background-color 0.1s ease-out,
+      color 0.1s ease-out;
+  }
+  .menu-item:hover,
+  .menu-item[aria-checked='true'] {
+    @apply bg-overlay text-text;
+  }
+  /* On phones every header menu becomes a sheet under the bar. */
+  @media (max-width: 639px) {
+    .menu {
+      position: fixed;
+      top: 4.25rem;
+      left: 0.75rem;
+      right: 0.75rem;
+      width: auto;
+      max-height: calc(100dvh - 5rem);
+      overflow: auto;
+    }
+  }
+  select.field {
+    @apply appearance-none pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+
+  /* ------------------------------------------------------------ controls */
+  .progress {
+    @apply h-1.5 w-full overflow-hidden bg-line-soft;
+  }
+  .progress > span {
+    @apply relative block h-full overflow-hidden bg-yellow;
+    transition: width 0.4s var(--ease-snap);
+  }
+  .progress > span::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.6), transparent);
+    animation: shimmer 1.3s linear infinite;
+  }
+  .progress-indeterminate > span {
+    width: 30% !important;
+    animation: indeterminate 1.1s ease-in-out infinite;
+  }
+  .switch {
+    @apply relative inline-flex h-6 w-11 shrink-0 items-center border border-line bg-base;
+    transition: background-color 0.15s ease-out;
+  }
+  .switch::after {
+    content: '';
+    @apply absolute left-1 size-4 bg-muted;
+    transition: transform 0.2s var(--ease-snap);
+  }
+  .switch[aria-checked='true'] {
+    @apply border-yellow bg-yellow;
+  }
+  .switch[aria-checked='true']::after {
+    @apply translate-x-[18px] bg-ink;
+  }
+  .range {
+    @apply h-6 w-full appearance-none bg-transparent;
+  }
+  .range::-webkit-slider-runnable-track {
+    @apply h-1 bg-line;
+  }
+  .range::-moz-range-track {
+    @apply h-1 bg-line;
+  }
+  .range::-webkit-slider-thumb {
+    @apply -mt-1.5 size-4 appearance-none border-2 border-ink bg-yellow;
+  }
+  .range::-moz-range-thumb {
+    @apply size-4 rounded-none border-2 border-ink bg-yellow;
+  }
+  .range::-moz-range-progress {
+    @apply h-1 bg-yellow;
+  }
+  .lib-action {
+    @apply grid size-11 place-items-center border-r border-line-soft text-muted;
+    transition:
+      color 0.1s ease-out,
+      background-color 0.1s ease-out;
+  }
+  .lib-action:hover {
+    @apply bg-overlay text-yellow;
+  }
+  .kbd {
+    @apply inline-flex min-w-6 items-center justify-center border border-line px-1 text-xs md:text-[11px] font-bold text-muted;
+  }
+}
+
+/* -------------------------------------------------------------- motion */
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes indeterminate {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes slide {
+  from {
+    transform: translateY(10px);
+  }
+}
+@keyframes section-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.rise {
+  animation: rise 0.5s var(--ease-snap) both;
+  animation-delay: var(--d, 0ms);
+}
+/* Transform-only entrance keeps the headline painted on the first frame (LCP). */
+.slide {
+  animation: slide 0.6s var(--ease-snap) both;
+}
+.section-in {
+  animation: section-in 0.35s var(--ease-snap) both;
+}
+.toast {
+  animation: rise 0.3s var(--ease-snap) both;
+}
+.lift {
+  transition:
+    transform 0.2s var(--ease-snap),
+    border-color 0.15s ease-out;
+}
+.lift:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 0 #000;
+  border-color: var(--color-dim);
+}
+.hover-rail {
+  transition:
+    background-color 0.1s ease-out,
+    box-shadow 0.1s ease-out;
+}
+.hover-rail:hover {
+  @apply bg-overlay;
+  box-shadow: inset 2px 0 0 0 var(--color-yellow);
+}
+
+/* --------------------------------------------------------- first-visit intro */
+
+.intro {
+  display: none;
+}
+html[data-intro] .intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--color-base);
+  animation: intro-out 0.45s var(--ease-snap) 1.05s both;
+}
+html[data-intro] body {
+  overflow: hidden;
+  animation: unlock 0s 1.5s both;
+}
+.intro-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--color-line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-line-soft) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at center, #000 10%, transparent 65%);
+  animation: intro-grid 1.4s var(--ease-snap) both;
+}
+.intro-logo .shadow {
+  animation: fade-in 0.3s ease-out 0.35s both;
+}
+.intro-logo .box {
+  transform-origin: 31px 31px;
+  animation: box-in 0.45s var(--ease-snap) 0.05s both;
+}
+.intro-logo .mark {
+  animation: mark-in 0.4s var(--ease-snap) 0.3s both;
+}
+.intro-logo .base {
+  transform-origin: 17px 47px;
+  animation: base-in 0.35s var(--ease-snap) 0.55s both;
+}
+.intro-word span {
+  display: inline-block;
+  animation: letter 0.4s var(--ease-snap) both;
+  animation-delay: calc(0.35s + var(--i) * 30ms);
+}
+.intro-bar {
+  transform-origin: left;
+  animation: bar 0.9s var(--ease-snap) 0.1s both;
+}
+@keyframes intro-out {
+  to {
+    opacity: 0;
+    transform: translateY(-3%);
+    visibility: hidden;
+  }
+}
+@keyframes unlock {
+  to {
+    overflow: visible;
+  }
+}
+@keyframes intro-grid {
+  from {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes box-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-45deg);
+  }
+}
+@keyframes mark-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+@keyframes base-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes letter {
+  from {
+    opacity: 0;
+    transform: translateY(0.6em);
+  }
+}
+@keyframes bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* ------------------------------------------------ animated section backdrops */
+
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.scene-grid {
+  position: absolute;
+  inset: -56px;
+  background-image:
+    linear-gradient(rgb(40 45 63 / 0.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(40 45 63 / 0.45) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, #000, transparent 85%);
+  filter: blur(1px);
+  animation: grid-pan 30s linear infinite;
+}
+/* The canvas scene is blurred so it stays in the background. */
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: blur(2px);
+  opacity: 0.9;
+}
+@keyframes grid-pan {
+  to {
+    transform: translate(56px, 56px);
+  }
+}
+/* ------------------------------------------------------------ music bits */
+
+/* Radar ping behind the live server status dot. */
+.ping {
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Small square spinner (loading songs, busy buttons). */
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spinner 0.7s linear infinite;
+}
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Equalizer bars shown while music plays. */
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.eq i {
+  width: 3px;
+  height: 100%;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: eq 0.9s ease-in-out infinite alternate;
+}
+.eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+@keyframes eq {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* Vinyl record in a yellow sleeve (like the logo): while music plays the disc
+   slides out of the sleeve and spins. */
+.record {
+  position: relative;
+  flex-shrink: 0;
+  width: 92px;
+  height: 64px;
+}
+.record-sleeve {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 64px;
+  background:
+    linear-gradient(var(--color-blue), var(--color-blue)) 10px 48px / 30px 4px no-repeat,
+    var(--color-yellow);
+  box-shadow: 3px 3px 0 0 #000;
+}
+.record-sleeve::after {
+  /* the "M" stripes of the logo, simplified */
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  width: 30px;
+  height: 28px;
+  background: linear-gradient(90deg, var(--color-base) 0 8px, transparent 8px 11px, var(--color-base) 11px 19px, transparent 19px 22px, var(--color-base) 22px);
+  clip-path: polygon(0 0, 50% 45%, 100% 0, 100% 100%, 75% 100%, 75% 45%, 50% 75%, 25% 45%, 25% 100%, 0 100%);
+}
+.record-disc {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    conic-gradient(from 20deg, transparent 0 40deg, rgb(255 255 255 / 0.14) 55deg, transparent 70deg 220deg, rgb(255 255 255 / 0.1) 235deg, transparent 250deg),
+    repeating-radial-gradient(circle, #111318 0 2px, #1d2029 2px 3px);
+  border: 1px solid #000;
+  transform: translateX(12px);
+  transition: transform 0.6s var(--ease-snap);
+}
+.record-label {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--color-base) 0 2.5px, var(--color-red) 3px 100%);
+}
+.record.playing .record-disc {
+  transform: translateX(28px);
+  animation: record-spin 1.8s linear 0.6s infinite;
+}
+@keyframes record-spin {
+  from {
+    transform: translateX(28px) rotate(0);
+  }
+  to {
+    transform: translateX(28px) rotate(360deg);
+  }
+}
+
+/* Footer signature: the whole line ripples letter by letter; only the name is a link. */
+.signature {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+.signature-letter {
+  display: inline-block;
+  white-space: pre;
+  animation: wave 4s var(--ease-snap) infinite;
+  animation-delay: calc(var(--i) * 55ms);
+}
+.signature-link {
+  display: inline-flex;
+  color: var(--color-yellow);
+  border-bottom: 2px solid var(--color-yellow);
+  transition:
+    color 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+.signature-link:hover {
+  color: var(--color-text);
+  border-color: var(--color-text);
+}
+.signature-link .signature-letter {
+  animation-name: wave-name;
+}
+.signature:hover .signature-letter {
+  animation-duration: 1.6s;
+}
+@keyframes wave {
+  0%,
+  28%,
+  100% {
+    transform: translateY(0);
+  }
+  10% {
+    transform: translateY(-4px);
+  }
+  18% {
+    transform: translateY(1px);
+  }
+}
+@keyframes wave-name {
+  0%,
+  28%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  10% {
+    transform: translateY(-6px) rotate(-8deg);
+  }
+  18% {
+    transform: translateY(1px) rotate(3deg);
+  }
+}
+
+/* View transitions for section changes. */
+::view-transition-old(root) {
+  animation: 0.15s ease-in both fade-out;
+}
+::view-transition-new(root) {
+  animation: 0.3s var(--ease-snap) both section-in;
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-intro] .intro {
+    display: none;
+  }
+  html[data-intro] body {
+    overflow: visible;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,280 @@
+<header class="slide mb-6 flex flex-col gap-5 md:mb-8 lg:flex-row lg:items-end lg:justify-between">
+  <div>
+    <p class="label-mark text-yellow">{{ t('dl.module') }}</p>
+    <h1 class="headline mt-3">{{ t('dl.title') }}</h1>
+    <p class="mt-2 max-w-2xl text-muted">{{ t('dl.subtitle') }}</p>
+  </div>
+  <button
+    type="button"
+    class="flex items-center gap-3 self-start border bg-raised px-4 py-3 text-left transition-colors lg:self-auto"
+    [class]="store.online() === false ? 'border-red' : 'border-line hover:border-dim'"
+    [title]="t('dl.recheck')"
+    (click)="store.checkHealth()"
+  >
+    <span class="relative grid size-8 place-items-center">
+      @if (store.online() !== false) {
+        <span class="absolute inset-1.5 bg-yellow/40" [class.ping]="store.online()"></span>
+      }
+      <span class="relative size-2.5" [class]="store.online() === false ? 'bg-red' : store.online() ? 'bg-yellow' : 'bg-dim'"></span>
+    </span>
+    <span>
+      <span class="block text-xs font-bold tracking-[0.08em] uppercase" [class.text-red-text]="store.online() === false">
+        {{ store.online() === null ? t('dl.checking') : store.online() ? t('dl.online', { ms: store.latency() ?? 0 }) : t('header.offline') }}
+      </span>
+      <span class="block text-xs text-muted">{{ t('dl.engine') }} · {{ t('dl.engineText') }}</span>
+    </span>
+  </button>
+</header>
+
+<section class="pane rise p-4 md:p-6" style="--d: 40ms" [attr.aria-label]="t('dl.urlLabel')">
+  <div class="flex flex-col gap-3 md:flex-row" role="search">
+    <div class="relative flex-1">
+      <label for="url" class="sr-only">{{ t('dl.urlLabel') }}</label>
+      <app-icon name="link" [size]="18" class="absolute top-1/2 left-4 -translate-y-1/2 text-dim" />
+      <input
+        #urlInput
+        id="url"
+        type="url"
+        inputmode="url"
+        autocomplete="off"
+        placeholder="https://youtube.com/watch?v=…"
+        class="field min-h-14! pr-12 pl-12 text-[1rem]"
+        (input)="onInput(urlInput.value)"
+        (keydown.enter)="analyze()"
+        [attr.aria-invalid]="!!error()"
+        aria-describedby="url-help"
+      />
+      @if (url()) {
+        <button
+          type="button"
+          class="absolute top-1/2 right-2 grid size-10 -translate-y-1/2 place-items-center text-dim hover:text-text"
+          [attr.aria-label]="t('dl.clear')"
+          (click)="clear()"
+        >
+          <app-icon name="x" [size]="18" />
+        </button>
+      }
+    </div>
+    <div class="grid grid-cols-2 gap-3 md:flex">
+      <button type="button" class="btn btn-secondary min-h-14" (click)="readClipboard()">
+        <app-icon name="clipboard" [size]="16" /> {{ t('dl.paste') }}
+      </button>
+      <button type="button" class="btn btn-primary min-h-14 md:px-8" [disabled]="analyzing()" (click)="analyze()">
+        <app-icon name="zap" [size]="16" /> {{ analyzing() ? t('dl.analyzing') : t('dl.analyze') }}
+      </button>
+    </div>
+  </div>
+
+  <div id="url-help" class="mt-4 flex flex-wrap items-center gap-2" aria-live="polite">
+    @if (error()) {
+      <p class="border-l-2 border-red pl-3 text-sm text-red-text" role="alert">{{ error() }}</p>
+    } @else {
+      <span class="label mr-1 hidden sm:inline">{{ t('dl.platforms') }}</span>
+      @for (p of platforms; track p.id) {
+        <span class="tag transition-colors" [class]="platform()?.id === p.id ? 'border-yellow! text-text!' : ''">
+          <span class="size-1.5" [style.background]="p.color"></span>{{ p.label }}
+        </span>
+      }
+    }
+  </div>
+</section>
+
+@if (analyzing()) {
+  <div class="pane rise mt-6 grid grid-cols-1 gap-6 p-4 md:grid-cols-[320px_1fr] md:p-6" aria-hidden="true">
+    <div class="aspect-video animate-pulse bg-overlay"></div>
+    <div class="space-y-3">
+      <div class="h-4 w-24 animate-pulse bg-overlay"></div>
+      <div class="h-8 w-2/3 animate-pulse bg-overlay"></div>
+      <div class="h-11 animate-pulse bg-overlay"></div>
+      <div class="h-11 w-1/2 animate-pulse bg-overlay"></div>
+    </div>
+  </div>
+}
+
+@if (meta(); as m) {
+  <section class="pane rise relative mt-6 grid grid-cols-1 gap-6 p-4 md:grid-cols-[320px_1fr] md:gap-8 md:p-6" aria-labelledby="meta-title">
+    <span class="absolute -top-px right-4 bg-yellow px-3 py-1 text-xs font-bold tracking-[0.08em] text-ink uppercase md:text-[11px]">
+      {{ t('dl.ready') }} · {{ m.qualities[0] ? m.qualities[0].height + 'p' + ((m.qualities[0].fps ?? 0) >= 50 ? '60' : '') : 'audio' }}
+    </span>
+    <div>
+      <div class="relative grid aspect-video place-items-center overflow-hidden border border-line bg-base">
+        @if (m.thumbnail) {
+          <img [src]="m.thumbnail" alt="" referrerpolicy="no-referrer" class="size-full object-cover" width="480" height="270" />
+        } @else {
+          <app-icon [name]="m.hasVideo ? 'film' : 'music'" [size]="40" class="text-dim" />
+        }
+        <span class="tag absolute top-2 left-2 border-yellow! bg-base/90 text-yellow!">{{ m.platform }}</span>
+        @if (m.duration) {
+          <span class="tag absolute right-2 bottom-2 bg-base/90 text-text!">{{ duration(m.duration) }}</span>
+        }
+      </div>
+      @if (m.uploader) {
+        <p class="mt-3 flex items-center gap-2 border-t border-line-soft pt-3 text-sm text-muted">
+          <app-icon name="user" [size]="14" /> {{ m.uploader }}
+        </p>
+      }
+    </div>
+
+    <div class="flex min-w-0 flex-col gap-5">
+      <div>
+        <p class="label text-blue-text!">{{ t('dl.metadata') }}</p>
+        <h2 id="meta-title" class="mt-1 text-[22px] leading-7 font-semibold">{{ m.title }}</h2>
+      </div>
+
+      <div>
+        <label for="file-name" class="label mb-2 block">{{ t('dl.fileName') }}</label>
+        <div class="relative">
+          <app-icon name="pencil" [size]="14" class="absolute top-1/2 left-3 -translate-y-1/2 text-dim" />
+          <input id="file-name" class="field pr-16 pl-9" maxlength="120" [value]="fileName()" (input)="fileName.set($any($event.target).value)" />
+          <span class="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-dim">.{{ ext() }}</span>
+        </div>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-2">
+        @if (m.hasVideo) {
+          <fieldset>
+            <legend class="label mb-2">{{ t('dl.type') }}</legend>
+            <div class="grid grid-cols-2">
+              <button type="button" class="chip" [attr.aria-pressed]="mode() === 'video'" (click)="mode.set('video')">{{ t('dl.videoAudio') }}</button>
+              <button type="button" class="chip -ml-px" [attr.aria-pressed]="mode() === 'audio'" (click)="mode.set('audio')">{{ t('dl.audioOnly') }}</button>
+            </div>
+          </fieldset>
+        }
+        @if (mode() === 'video') {
+          <fieldset>
+            <legend class="label mb-2">{{ t('dl.format') }}</legend>
+            <div class="grid grid-cols-3">
+              @for (c of containers; track c.id; let first = $first) {
+                <button type="button" class="chip" [class.-ml-px]="!first" [attr.aria-pressed]="container() === c.id" (click)="container.set(c.id)">
+                  {{ c.label }}
+                </button>
+              }
+            </div>
+          </fieldset>
+        }
+      </div>
+
+      <fieldset>
+        <legend class="label mb-2">{{ t('dl.quality') }}</legend>
+        <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          @if (mode() === 'video') {
+            @for (q of videoQualities(); track q.id) {
+              <button type="button" class="chip relative min-h-14! flex-col gap-0.5!" [attr.aria-pressed]="quality().id === q.id" (click)="videoQuality.set(q.id)">
+                <span class="text-sm">{{ q.label }}</span>
+                <span class="opacity-80">{{ q.note }}</span>
+                @if ((q.fps ?? 0) >= 50) {
+                  <span class="absolute -top-2 -right-1.5 bg-blue px-1 text-[10px] leading-4 font-bold text-white">60</span>
+                }
+              </button>
+            }
+          } @else {
+            @for (a of audio; track a.id) {
+              <button type="button" class="chip min-h-14! flex-col gap-0.5!" [attr.aria-pressed]="quality().id === a.id" (click)="audioQuality.set(a.id)">
+                <span class="text-sm">{{ a.label }}</span>
+                <span class="opacity-80">{{ a.note === 'lossless' ? t('dl.lossless') : a.note }}</span>
+              </button>
+            }
+          }
+        </div>
+      </fieldset>
+
+      @if (canPickFps()) {
+        <fieldset class="slide">
+          <legend class="label mb-2">{{ t('dl.fps') }}</legend>
+          <div class="grid max-w-sm grid-cols-2">
+            @for (f of [60, 30]; track f; let first = $first) {
+              <button type="button" class="chip" [class.-ml-px]="!first" [attr.aria-pressed]="fps() === f" (click)="fps.set($any(f))">
+                <app-icon [name]="f === 60 ? 'zap' : 'film'" [size]="14" /> {{ f }} fps
+                <span class="opacity-70">· {{ t(f === 60 ? 'dl.fpsSmooth' : 'dl.fpsLight') }}</span>
+              </button>
+            }
+          </div>
+        </fieldset>
+      }
+
+      <div class="mt-auto flex flex-col gap-4 border-t border-line-soft pt-5">
+        <p class="label flex flex-wrap gap-x-4 gap-y-1">
+          <span>{{ t('dl.size') }} <b class="ml-1 text-sm text-text">{{ bytes(estimate()) }}</b></span>
+          <span [class.text-blue-text!]="store.guest()">
+            {{ store.guest() ? t('dl.keepGuest') : t('dl.keep', { hours: store.me()?.ttlHours ?? 24 }) }}
+          </span>
+        </p>
+        <div class="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
+          <button type="button" class="btn btn-primary min-h-13" (click)="trimFirst()">
+            <app-icon name="scissors" [size]="16" /> {{ t('dl.trimFirst') }}
+          </button>
+          <button type="button" class="btn btn-secondary min-h-13" (click)="download()">
+            <app-icon name="download" [size]="16" /> {{ t('dl.direct') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+}
+
+@defer (on immediate; hydrate on idle) {
+  <div class="rise mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]" style="--d: 100ms">
+    <section id="cola" class="pane" aria-labelledby="queue-title">
+      <h2 id="queue-title" class="pane-head">
+        <span class="label-mark text-text">{{ t('dl.queue') }}</span>
+        <span class="label ml-auto">{{ t('dl.active', { n: store.jobs().length }) }}</span>
+      </h2>
+      <app-job-list />
+    </section>
+
+    <section class="pane" aria-labelledby="recent-title">
+      <h2 id="recent-title" class="pane-head">
+        <span class="label-mark text-text">{{ t('dl.recent') }}</span>
+      </h2>
+      @if (store.guest()) {
+        <div class="flex flex-col items-center gap-3 p-6 text-center">
+          <p class="text-sm text-muted">{{ t('dl.recentGuest') }}</p>
+          <button type="button" class="btn btn-secondary min-h-10 text-xs" data-menu (click)="store.toggleMenu('account')">
+            <app-icon name="user" [size]="14" /> {{ t('common.createAccount') }}
+          </button>
+        </div>
+      } @else {
+        <ul>
+          @for (f of recent(); track f.id) {
+            <li class="hover-rail border-b border-line-soft px-4 py-3">
+              <div class="flex items-center gap-2">
+                <p class="min-w-0 flex-1 truncate text-sm font-semibold">{{ f.name }}</p>
+                <span class="label text-yellow!">{{ f.ext }}</span>
+                <button type="button" class="-mr-2 grid size-8 place-items-center text-dim hover:text-red-text" [title]="t('common.delete')" [attr.aria-label]="t('common.delete') + ' ' + f.name" (click)="store.remove(f)">
+                  <app-icon name="trash" [size]="14" />
+                </button>
+              </div>
+              <p class="label mt-1">{{ bytes(f.size) }} · {{ ago(f.createdAt) }}</p>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                @if (f.kind !== 'gif') {
+                  <button type="button" class="btn btn-secondary min-h-8 text-xs md:text-[11px]" (click)="store.open('trim', toSource(f))">
+                    <app-icon name="scissors" [size]="12" /> {{ t('common.trim') }}
+                  </button>
+                }
+                <button type="button" class="btn btn-secondary min-h-8 text-xs md:text-[11px]" (click)="store.open('convert', toSource(f))">
+                  <app-icon name="convert" [size]="12" /> {{ t('common.convert') }}
+                </button>
+              </div>
+            </li>
+          } @empty {
+            <li class="p-6 text-center text-sm text-muted">{{ t('dl.noRecent') }}</li>
+          }
+        </ul>
+        <button type="button" class="label block w-full py-3 text-center text-yellow! hover:bg-overlay" (click)="store.go('library')">
+          {{ t('dl.viewLibrary') }}
+        </button>
+      }
+    </section>
+  </div>
+
+  <div class="rise mt-6 grid grid-cols-1 gap-4 md:grid-cols-3" style="--d: 160ms">
+    @for (f of [{ icon: 'shield', title: 'dl.feature1', text: 'dl.feature1Text', color: 'text-yellow' }, { icon: 'gauge', title: 'dl.feature2', text: 'dl.feature2Text', color: 'text-blue-text' }, { icon: 'clock', title: 'dl.feature3', text: 'dl.feature3Text', color: 'text-red-text' }]; track f.title) {
+      <article class="pane lift p-5">
+        <h3 class="flex items-center gap-3 text-[1rem] font-bold uppercase">
+          <app-icon [name]="$any(f.icon)" [size]="20" [class]="f.color" /> {{ t($any(f.title)) }}
+        </h3>
+        <p class="mt-2 text-sm text-muted">{{ t($any(f.text)) }}</p>
+      </article>
+    }
+  </div>
+}

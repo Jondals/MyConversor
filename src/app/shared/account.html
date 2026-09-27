@@ -1,0 +1,128 @@
+<div class="menu right-0 w-[min(92vw,380px)]" role="dialog" [attr.aria-label]="t('header.account')">
+  @if (store.me(); as me) {
+    @if (!me.guest) {
+      <div class="p-5">
+        <div class="flex items-center gap-3">
+          <span class="grid size-14 shrink-0 place-items-center overflow-hidden border border-yellow bg-yellow text-ink">
+            @if (me.avatar) {
+              <img [src]="me.avatar" alt="" width="56" height="56" class="size-full object-cover" />
+            } @else {
+              <app-icon name="user" [size]="24" />
+            }
+          </span>
+          <div class="min-w-0">
+            <p class="label">{{ t('account.signedIn') }}</p>
+            <p class="truncate text-lg font-bold">{{ me.username }}</p>
+          </div>
+        </div>
+
+        <p class="label mt-5">{{ t('account.storage') }}</p>
+        <p class="mt-1 text-xl font-bold">
+          {{ bytes(me.used) }} <span class="text-sm font-medium text-muted">{{ t('account.of') }} {{ bytes(me.quota) }}</span>
+        </p>
+        <div class="progress mt-2"><span [style.width.%]="(me.used / me.quota) * 100"></span></div>
+        <p class="mt-2 text-xs text-muted">{{ t('account.expires', { hours: me.ttlHours }) }}</p>
+
+        <input #avatarInput id="acc-avatar-change" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="sr-only" (change)="changePhoto(avatarInput)" />
+        <div class="mt-5 grid grid-cols-2 gap-2">
+          <label for="acc-avatar-change" class="btn btn-secondary min-h-10 text-xs">
+            <app-icon name="image" [size]="14" /> {{ t('account.changePhoto') }}
+          </label>
+          <button type="button" class="btn btn-secondary btn-danger min-h-10 text-xs" [disabled]="!me.avatar" (click)="removePhoto()">
+            <app-icon name="trash" [size]="14" /> {{ t('account.removePhoto') }}
+          </button>
+        </div>
+        <button type="button" class="btn btn-secondary btn-danger mt-2 w-full" (click)="logout()">
+          <app-icon name="logout" [size]="16" /> {{ t('account.logout') }}
+        </button>
+      </div>
+    } @else {
+      <div class="p-4">
+        <div class="grid grid-cols-2 border border-line bg-base p-1" role="tablist">
+          <button type="button" role="tab" data-sfx="off" class="chip border-0!" [attr.aria-selected]="mode() === 'register'" (click)="mode.set('register'); error.set('')">
+            {{ t('account.create') }}
+          </button>
+          <button type="button" role="tab" data-sfx="off" class="chip border-0!" [attr.aria-selected]="mode() === 'login'" (click)="mode.set('login'); error.set('')">
+            {{ t('account.signin') }}
+          </button>
+        </div>
+
+        <h2 class="mt-5 text-xl font-bold">{{ t(mode() === 'register' ? 'account.createTitle' : 'account.signinTitle') }}</h2>
+        <p class="mt-1 text-sm text-muted">
+          {{ mode() === 'register' ? t('account.createText', { quota: bytes(me.accountQuota) }) : t('account.signinText') }}
+        </p>
+
+        <form class="mt-4 flex flex-col gap-3" (submit)="$event.preventDefault(); submit(user.value)">
+          <div>
+            <label for="acc-user" class="label mb-1.5 block">{{ t('account.username') }}</label>
+            <input #user id="acc-user" class="field" autocomplete="username" required minlength="3" maxlength="24" />
+          </div>
+          <div>
+            <label for="acc-pass" class="label mb-1.5 block">{{ t('account.password') }}</label>
+            <div class="relative">
+              <input id="acc-pass" class="field pr-11" required [type]="reveal() ? 'text' : 'password'"
+                [attr.autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'"
+                [value]="password()" (input)="password.set($any($event.target).value)" />
+              <button type="button" class="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center text-muted hover:text-yellow"
+                [attr.aria-label]="t(reveal() ? 'account.hide' : 'account.show')" (click)="reveal.set(!reveal())">
+                <app-icon [name]="reveal() ? 'eyeOff' : 'eye'" [size]="16" />
+              </button>
+            </div>
+          </div>
+
+          @if (mode() === 'register') {
+            <div>
+              <label for="acc-repeat" class="label mb-1.5 block">{{ t('account.repeat') }}</label>
+              <div class="relative">
+                <input id="acc-repeat" class="field pr-11" required autocomplete="new-password" [type]="reveal() ? 'text' : 'password'"
+                  [class.border-red!]="repeat() && repeat() !== password()"
+                  [value]="repeat()" (input)="repeat.set($any($event.target).value)" />
+                <button type="button" class="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center text-muted hover:text-yellow"
+                  [attr.aria-label]="t(reveal() ? 'account.hide' : 'account.show')" (click)="reveal.set(!reveal())">
+                  <app-icon [name]="reveal() ? 'eyeOff' : 'eye'" [size]="16" />
+                </button>
+              </div>
+            </div>
+
+            <ul class="grid grid-cols-2 gap-x-3 gap-y-1.5 border border-line-soft bg-base p-3 text-xs">
+              @for (r of rules; track r.key; let i = $index) {
+                <li class="flex items-start gap-1.5 transition-colors" [class]="passes()[i] ? 'text-text' : 'text-dim'" [class.col-span-2]="i === 4">
+                  <app-icon [name]="passes()[i] ? 'check' : 'x'" [size]="12" [stroke]="3" [class]="passes()[i] ? 'mt-0.5 text-yellow' : 'mt-0.5'" />
+                  {{ t(r.key) }}
+                </li>
+              }
+            </ul>
+            <p class="text-xs text-muted">{{ t('account.noRecovery') }}</p>
+
+            <input #photoInput id="acc-photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="sr-only" (change)="pickPhoto(photoInput)" />
+            <div class="flex items-center gap-3 border border-dashed border-line p-3">
+              <span class="grid size-12 shrink-0 place-items-center overflow-hidden border border-line bg-base text-muted">
+                @if (photoUrl(); as url) {
+                  <img [src]="url" alt="" width="48" height="48" class="size-full object-cover" />
+                } @else {
+                  <app-icon name="user" [size]="20" />
+                }
+              </span>
+              <div>
+                <p class="text-sm font-semibold">{{ t('account.photo') }}</p>
+                <label for="acc-photo" class="btn btn-secondary mt-1.5 min-h-8 px-3 text-xs">
+                  <app-icon name="image" [size]="14" /> {{ t('account.choosePhoto') }}
+                </label>
+              </div>
+            </div>
+          }
+
+          @if (error()) {
+            <p class="border-l-2 border-red pl-3 text-sm text-red-text" role="alert">{{ error() }}</p>
+          }
+          <button type="submit" class="btn btn-primary mt-1 min-h-12" [disabled]="busy()">
+            {{ t(mode() === 'login' ? 'account.enter' : 'account.create') }}
+          </button>
+          <p class="text-xs text-dim">{{ t('account.guestNote', { hours: me.ttlHours }) }}</p>
+        </form>
+      </div>
+    }
+  } @else {
+    <p class="p-5 text-sm text-muted">{{ t(store.online() === false ? 'err.offline' : 'stage.preparing') }}</p>
+  }
+</div>

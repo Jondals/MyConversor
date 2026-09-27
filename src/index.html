@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>MyConversor · Descarga, recorta y convierte vídeo</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="MyConversor: descarga vídeo y audio de YouTube, TikTok, Instagram y X, recórtalo al milisegundo y conviértelo a MP4, WebM, GIF, MP3 o FLAC."
+    />
+    <meta name="theme-color" content="#0d0e12" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="apple-touch-icon" href="icon-512.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="preload" href="fonts/space-grotesk.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      html {
+        background: #0d0e12;
+        color: #f8fafc;
+      }
+    </style>
+    <script>
+      // Runs before the app: first-visit intro flag and no context menu anywhere.
+      try {
+        if (!localStorage.getItem('mc.intro')) {
+          document.documentElement.setAttribute('data-intro', '');
+          localStorage.setItem('mc.intro', '1');
+        }
+      } catch (e) {}
+      document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+      });
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
