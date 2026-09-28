@@ -66,6 +66,8 @@ export function baseArgs(bins, cookies) {
     bins.ffmpeg,
     '--js-runtimes',
     `node:${process.execPath}`,
+    '--extractor-args',
+    'youtube:player_client=android,web',
   ];
   if (cookies) args.push('--cookies', cookies);
   return args;
