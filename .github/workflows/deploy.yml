@@ -1,0 +1,47 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main # O 'master', cambia si tu rama principal se llama diferente
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Desplegar en el servidor vía SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/ubuntu/app
+            
+            # 1. Obtener la última versión del código
+            git pull origin main
+            
+            # 2. Reconstruir la imagen de Docker con los nuevos cambios
+            sudo docker build -t myconversor .
+            
+            # 3. Reiniciar el contenedor montando las cookies y aplicando los DNS de Google
+            sudo docker stop myconversor-app || true
+            sudo docker rm myconversor-app || true
+            
+            sudo docker run -d \
+              --dns 8.8.8.8 \
+              --dns 1.1.1.1 \
+              -p 8000:8000 \
+              --restart always \
+              -v $(pwd)/.data:/app/.data \
+              -v $(pwd)/cookies.txt:/app/cookies.txt \
+              -e MYCONVERSOR_COOKIES=/app/cookies.txt \
+              --name myconversor-app \
+              myconversor
+            
+            # 4. Asegurar la recarga de Caddy
+            sudo systemctl restart caddy
