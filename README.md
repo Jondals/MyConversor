@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v2.3.0
+  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v2.4.0
 </p>
 
 ---
@@ -95,7 +95,7 @@ Todo es **una sola página**: las secciones se muestran u ocultan sin recargar, 
 - 🎵 **Audio**:
   - Con pérdida: **MP3, AAC, OGG, Opus, WMA y AC3**.
   - Sin pérdida: **WAV, FLAC, ALAC y AIFF**.
-- Perfiles:
+- Arriba los **formatos** (contenedores) y debajo los perfiles:
   - Original
   - Reels/TikTok (9:16)
   - Instagram (1:1)
@@ -108,7 +108,8 @@ Todo es **una sola página**: las secciones se muestran u ocultan sin recargar, 
 - Una **previsión** con el peso y el tiempo estimados antes de convertir.
 - Botón **Eliminar** para borrar el archivo cargado.
 
-### 📚 Biblioteca (solo con cuenta)
+### 📚 Biblioteca
+- También para **invitados** (10 GB, se borra a las 2 h), con un aviso de lo que se gana creando cuenta.
 - Espacio usado y libre, con una barra por tipo: descargas, recortes, conversiones y subidos.
 - Búsqueda, filtros y orden (reciente, antiguo, tamaño, nombre), en **vista de cuadrícula o de lista**.
 - Cuenta atrás de borrado en cada archivo.
@@ -129,12 +130,14 @@ Solo lo justo: logo, secciones y tres botones (idioma, opciones y cuenta).
     - Spotify no deja descargar su audio, así que se leen el título y el artista de su página pública y la canción se busca en YouTube; si un resultado falla, se prueba el siguiente.
     - También puedes **subir archivos** (MP3, M4A, OGG, WAV o FLAC, hasta 200 MB cada uno).
     - Todo se guarda **solo en tu navegador** (IndexedDB); el servidor no se queda nada. La música sigue sonando al cerrar el menú.
-    - Si YouTube pide verificar que no eres un bot (pasa a veces con servidores en la nube), usa `MYCONVERSOR_COOKIES` (ver Configuración).
+    - Si YouTube pide verificar que no eres un bot (pasa con servidores en la nube), mira **Despliegue**.
 - 🇪🇸/🇬🇧 **Idioma**: un botón con la bandera cambia toda la web entre español e inglés. Recuerda tu elección y la primera vez usa el idioma del navegador.
 - 👤 **Cuenta**: un desplegable justo debajo de tu icono.
-  - Pestañas *Crear cuenta* / *Iniciar sesión*.
+  - Arriba una ficha con la franja Bauhaus, tu foto (clic para cambiarla), el nº de archivos, el espacio usado y cuándo se borran.
+  - Con sesión: accesos rápidos a la biblioteca y a la foto, y cerrar sesión.
+  - Sin sesión: pestañas *Crear cuenta* / *Iniciar sesión*.
   - Contraseña con botón para mostrarla y campo para repetirla.
-  - Requisitos en vivo: 10+ caracteres, minúscula, mayúscula, número y símbolo.
+  - Barra de fuerza y requisitos en vivo: 10+ caracteres, minúscula, mayúscula, número y símbolo.
   - Aviso de que la contraseña no se puede recuperar.
   - **Foto de perfil opcional**.
 
@@ -172,15 +175,15 @@ En el móvil los menús se abren como una hoja a lo ancho, bajo la barra.
 - 🌌 **Fondo animado distinto en cada sección, que reacciona al ratón** (o al dedo). No es un brillo que te sigue: las formas se mueven.
   - Van **desenfocados** y reaccionan de forma **sutil**, siguiendo al cursor con inercia, para no distraer del contenido.
   - Al hacer **clic** sale una onda suave que atraviesa la escena.
-  - Descargar: columnas de datos que **se apartan un poco** alrededor del cursor.
+  - Descargar: un campo de **flechas de descarga** que bajan despacio y, cerca del cursor, se apartan y crecen.
   - Recortar: una **onda de audio** que crece donde pasas el cursor, con cabezal y corchetes que lo siguen. Cada clic deja una marca de corte.
   - Convertir: un campo de círculos, cuadrados y triángulos que **flotan y giran solos**, apuntan al cursor y se transforman (círculo ⇄ cuadrado) al acercarte. La onda del clic los **convierte** en la forma siguiente.
-  - Biblioteca: un muro de celdas que **se encienden** bajo el cursor y dejan una estela.
+  - Biblioteca: **fichas de archivo** flotando (con los colores de cada tipo) que se levantan bajo el cursor y dejan una estela.
 - 🔊 **Sonidos** sintetizados con Web Audio: clic, sección, marca, éxito y error.
 - 🖱️ **Cursores propios**:
-  - Una flecha, normal o sobre los botones.
+  - Una flecha, normal o sobre los botones (esta un poco más grande para que no parezca menor).
   - Una barra de escritura en los campos de texto.
-  - Un cabezal y unas flechas de recorte en la línea de tiempo.
+  - Un cabezal y unas flechas de recorte (finas) en la línea de tiempo.
 - 🚫 **Clic derecho desactivado**, y las imágenes no se pueden arrastrar.
 - ✍️ **Pie**: una franja amarilla, azul y roja; el logo y la versión; y la frase **«Desarrollado por jondals»**, que ondea letra a letra. Solo «jondals» es el enlace a GitHub.
 - ♿ Respeta `prefers-reduced-motion` y tiene su propio interruptor en Opciones.
@@ -269,6 +272,16 @@ Todo ocurre en carpetas temporales que se borran al terminar. Hay además un tes
 | `MYCONVERSOR_FFMPEG` / `MYCONVERSOR_YTDLP` | auto | Rutas propias a los binarios |
 
 🐳 Docker: `docker build -t myconversor . && docker run -p 8000:8000 -v myconversor:/data myconversor`.
+
+## ☁️ Despliegue (Oracle Cloud)
+
+Cada `git push` a `main` despliega solo (`.github/workflows/deploy.yml`, por SSH):
+
+- El servidor se pone **igual que GitHub** (`git reset --hard`): no edites código allí.
+- Los datos (cuentas, sesiones, archivos) viven en `/home/ubuntu/myconversor-data`, montado en `/data`, así que **sobreviven a cada deploy**.
+- Junto a la app corre `bgutil-provider`, que da a yt-dlp los **PO tokens** de YouTube.
+- yt-dlp se actualiza solo al canal **nightly** al arrancar y cada 6 h.
+- Opcionales en el servidor: `/home/ubuntu/app/cookies.txt` (cookies de YouTube) y `/home/ubuntu/myconversor.env` (p. ej. `MYCONVERSOR_PROXY=...`).
 
 > ⚠️ Descarga solo contenido que tengas derecho a usar y respeta los términos de cada plataforma.
 
