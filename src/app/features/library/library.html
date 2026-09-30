@@ -1,203 +1,201 @@
 <header class="slide mb-6 md:mb-8">
   <p class="label-mark text-yellow">{{ t('lib.module') }}</p>
   <h1 class="headline mt-3">{{ t('lib.title') }}</h1>
-  <p class="mt-2 max-w-2xl text-muted">{{ t('lib.subtitle', { hours: store.me()?.accountTtlHours ?? 24 }) }}</p>
+  <p class="mt-2 max-w-2xl text-muted">{{ t('lib.subtitle', { hours: store.me()?.ttlHours ?? 24 }) }}</p>
 </header>
 
 @if (store.guest()) {
-  <section class="pane rise grid grid-cols-1 gap-6 p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
-    <div>
-      <span class="grid size-14 place-items-center border border-yellow text-yellow"><app-icon name="library" [size]="24" /></span>
-      <h2 class="mt-4 text-2xl font-bold uppercase">{{ t('lib.lockedTitle') }}</h2>
-      <p class="mt-2 max-w-xl text-muted">{{ t('lib.lockedText') }}</p>
-      <ul class="mt-5 grid gap-2 sm:grid-cols-3">
+  <section class="pane rise mb-6 flex flex-col gap-4 border-l-2 border-l-blue! p-4 md:flex-row md:items-center md:p-5">
+    <div class="min-w-0 flex-1">
+      <p class="label-mark text-text">{{ t('lib.lockedTitle') }}</p>
+      <p class="mt-2 text-sm text-muted">{{ t('lib.lockedText', { quota: bytes(store.quota()), hours: store.me()?.ttlHours ?? 2 }) }}</p>
+      <ul class="mt-3 flex flex-wrap gap-2">
         @for (perk of [{ icon: 'drive', text: t('lib.perk1', { quota: bytes(store.me()?.accountQuota ?? 0) }) }, { icon: 'clock', text: t('lib.perk2', { hours: store.me()?.accountTtlHours ?? 24 }) }, { icon: 'user', text: t('lib.perk3') }]; track perk.icon) {
-          <li class="flex items-center gap-2 border border-line bg-base px-3 py-2.5 text-sm font-semibold">
-            <app-icon [name]="$any(perk.icon)" [size]="16" class="text-yellow" /> {{ perk.text }}
+          <li class="tag py-1.5! text-text!">
+            <app-icon [name]="$any(perk.icon)" [size]="13" class="text-yellow" /> {{ perk.text }}
           </li>
         }
       </ul>
     </div>
-    <button type="button" class="btn btn-primary min-h-14 px-8 text-sm" data-menu (click)="store.toggleMenu('account')">
+    <button type="button" class="btn btn-primary min-h-12 shrink-0 px-6" data-menu (click)="store.toggleMenu('account')">
       <app-icon name="user" [size]="16" /> {{ t('common.createAccount') }}
     </button>
   </section>
-} @else {
-  <section class="pane rise p-4 md:p-6" aria-labelledby="storage-title">
-    <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
-      <div>
-        <p id="storage-title" class="label">{{ t('lib.storage') }}</p>
-        <p class="mt-1 text-3xl font-bold md:text-4xl">
-          {{ bytes(store.used()) }}
-          <span class="text-[1rem] font-medium text-muted">{{ t('lib.usedOf') }} {{ bytes(store.quota()) }}</span>
-        </p>
-      </div>
-      <span class="tag mb-1">{{ t('lib.percent', { n: ((store.used() / store.quota()) * 100).toFixed(2) }) }}</span>
-    </div>
-
-    <div class="mt-5 flex h-2 gap-0.5 bg-line-soft" role="img" [attr.aria-label]="t('header.storage') + ': ' + bytes(store.used())">
-      @for (u of usage(); track u.origin) {
-        @if (u.bytes) {
-          <span class="h-full min-w-1 transition-[width] duration-500" [style.width.%]="u.pct" [style.background]="origin[u.origin].color"></span>
-        }
-      }
-    </div>
-
-    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-      @for (u of usage(); track u.origin) {
-        <p class="flex items-center gap-2 border border-line-soft bg-base px-3 py-2">
-          <span class="size-2 shrink-0" [style.background]="origin[u.origin].color"></span>
-          <span class="label min-w-0 truncate">{{ t(origin[u.origin].key) }}</span>
-          <b class="ml-auto text-xs whitespace-nowrap">{{ bytes(u.bytes) }}</b>
-        </p>
-      }
-      <p class="col-span-2 flex items-center gap-2 border border-line-soft bg-base px-3 py-2 sm:col-span-1">
-        <span class="size-2 shrink-0 bg-line"></span>
-        <span class="label">{{ t('lib.free') }}</span>
-        <b class="ml-auto text-xs whitespace-nowrap text-yellow">{{ bytes(free()) }}</b>
+}
+<section class="pane rise p-4 md:p-6" aria-labelledby="storage-title">
+  <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
+    <div>
+      <p id="storage-title" class="label">{{ t('lib.storage') }}</p>
+      <p class="mt-1 text-3xl font-bold md:text-4xl">
+        {{ bytes(store.used()) }}
+        <span class="text-[1rem] font-medium text-muted">{{ t('lib.usedOf') }} {{ bytes(store.quota()) }}</span>
       </p>
     </div>
-  </section>
+    <span class="tag mb-1">{{ t('lib.percent', { n: ((store.used() / store.quota()) * 100).toFixed(2) }) }}</span>
+  </div>
 
-  <div class="rise mt-6 flex flex-col gap-3 lg:flex-row lg:items-center" style="--d: 60ms">
-    <div class="relative lg:w-80">
-      <label for="search" class="sr-only">{{ t('lib.searchLabel') }}</label>
-      <app-icon name="search" [size]="16" class="absolute top-1/2 left-3 -translate-y-1/2 text-dim" />
-      <input id="search" type="search" [placeholder]="t('lib.search')" class="field pl-9" [value]="query()" (input)="query.set($any($event.target).value)" />
-    </div>
-    <div class="flex gap-2 overflow-x-auto pb-1 lg:pb-0" role="group" [attr.aria-label]="t('lib.filter')">
-      <button type="button" class="chip shrink-0" [attr.aria-pressed]="filter() === 'all'" (click)="filter.set('all')">
-        {{ t('lib.all') }} ({{ count('all') }})
+  <div class="mt-5 flex h-2 gap-0.5 bg-line-soft" role="img" [attr.aria-label]="t('header.storage') + ': ' + bytes(store.used())">
+    @for (u of usage(); track u.origin) {
+      @if (u.bytes) {
+        <span class="h-full min-w-1 transition-[width] duration-500" [style.width.%]="u.pct" [style.background]="origin[u.origin].color"></span>
+      }
+    }
+  </div>
+
+  <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    @for (u of usage(); track u.origin) {
+      <p class="flex items-center gap-2 border border-line-soft bg-base px-3 py-2">
+        <span class="size-2 shrink-0" [style.background]="origin[u.origin].color"></span>
+        <span class="label min-w-0 truncate">{{ t(origin[u.origin].key) }}</span>
+        <b class="ml-auto text-xs whitespace-nowrap">{{ bytes(u.bytes) }}</b>
+      </p>
+    }
+    <p class="col-span-2 flex items-center gap-2 border border-line-soft bg-base px-3 py-2 sm:col-span-1">
+      <span class="size-2 shrink-0 bg-line"></span>
+      <span class="label">{{ t('lib.free') }}</span>
+      <b class="ml-auto text-xs whitespace-nowrap text-yellow">{{ bytes(free()) }}</b>
+    </p>
+  </div>
+</section>
+
+<div class="rise mt-6 flex flex-col gap-3 lg:flex-row lg:items-center" style="--d: 60ms">
+  <div class="relative lg:w-80">
+    <label for="search" class="sr-only">{{ t('lib.searchLabel') }}</label>
+    <app-icon name="search" [size]="16" class="absolute top-1/2 left-3 -translate-y-1/2 text-dim" />
+    <input id="search" type="search" [placeholder]="t('lib.search')" class="field pl-9" [value]="query()" (input)="query.set($any($event.target).value)" />
+  </div>
+  <div class="flex gap-2 overflow-x-auto pb-1 lg:pb-0" role="group" [attr.aria-label]="t('lib.filter')">
+    <button type="button" class="chip shrink-0" [attr.aria-pressed]="filter() === 'all'" (click)="filter.set('all')">
+      {{ t('lib.all') }} ({{ count('all') }})
+    </button>
+    @for (o of origins; track o) {
+      <button type="button" class="chip shrink-0" [attr.aria-pressed]="filter() === o" (click)="filter.set(o)">
+        {{ t(origin[o].key) }} ({{ count(o) }})
       </button>
-      @for (o of origins; track o) {
-        <button type="button" class="chip shrink-0" [attr.aria-pressed]="filter() === o" (click)="filter.set(o)">
-          {{ t(origin[o].key) }} ({{ count(o) }})
+    }
+  </div>
+  <div class="flex gap-2 lg:ml-auto">
+    <label for="sort" class="sr-only">{{ t('lib.sort') }}</label>
+    <select id="sort" class="field min-w-40" (change)="sort.set($any($event.target).value)">
+      @for (s of sorts; track s) {
+        <option [value]="s" [selected]="sort() === s">{{ t($any('lib.sort.' + s)) }}</option>
+      }
+    </select>
+    <div class="flex border border-line bg-raised p-0.5" role="group" [attr.aria-label]="t('lib.grid') + ' / ' + t('lib.list')">
+      @for (v of views; track v.id) {
+        <button
+          type="button"
+          class="grid size-10 place-items-center transition-colors"
+          [class]="view() === v.id ? 'bg-yellow text-ink' : 'text-muted hover:text-text'"
+          [attr.aria-pressed]="view() === v.id"
+          [attr.aria-label]="t(v.key)"
+          (click)="view.set(v.id)"
+        >
+          <app-icon [name]="v.id" [size]="16" />
         </button>
       }
     </div>
-    <div class="flex gap-2 lg:ml-auto">
-      <label for="sort" class="sr-only">{{ t('lib.sort') }}</label>
-      <select id="sort" class="field min-w-40" (change)="sort.set($any($event.target).value)">
-        @for (s of sorts; track s) {
-          <option [value]="s" [selected]="sort() === s">{{ t($any('lib.sort.' + s)) }}</option>
-        }
-      </select>
-      <div class="flex border border-line bg-raised p-0.5" role="group" [attr.aria-label]="t('lib.grid') + ' / ' + t('lib.list')">
-        @for (v of views; track v.id) {
-          <button
-            type="button"
-            class="grid size-10 place-items-center transition-colors"
-            [class]="view() === v.id ? 'bg-yellow text-ink' : 'text-muted hover:text-text'"
-            [attr.aria-pressed]="view() === v.id"
-            [attr.aria-label]="t(v.key)"
-            (click)="view.set(v.id)"
-          >
-            <app-icon [name]="v.id" [size]="16" />
-          </button>
-        }
-      </div>
-    </div>
   </div>
+</div>
 
-  <div class="mt-6 grid gap-4" [class]="view() === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'">
-    @for (f of items(); track f.id) {
-      <article
-        class="pane rise group flex transition-colors hover:border-dim"
-        [class]="view() === 'grid' ? 'flex-col' : 'flex-col sm:flex-row sm:items-center'"
-        [style.--d.ms]="$index * 35"
+<div class="mt-6 grid gap-4" [class]="view() === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'">
+  @for (f of items(); track f.id) {
+    <article
+      class="pane rise group flex transition-colors hover:border-dim"
+      [class]="view() === 'grid' ? 'flex-col' : 'flex-col sm:flex-row sm:items-center'"
+      [style.--d.ms]="$index * 35"
+    >
+      <button
+        type="button"
+        class="relative block shrink-0 overflow-hidden bg-base"
+        [class]="view() === 'grid' ? 'aspect-video border-b border-line' : 'aspect-video border-b border-line sm:w-40 sm:border-r sm:border-b-0'"
+        [attr.aria-label]="t('lib.play', { name: f.name })"
+        (click)="play(f)"
       >
-        <button
-          type="button"
-          class="relative block shrink-0 overflow-hidden bg-base"
-          [class]="view() === 'grid' ? 'aspect-video border-b border-line' : 'aspect-video border-b border-line sm:w-40 sm:border-r sm:border-b-0'"
-          [attr.aria-label]="t('lib.play', { name: f.name })"
-          (click)="play(f)"
-        >
-          @if (f.thumb) {
-            <img [src]="f.thumb" alt="" loading="lazy" class="size-full object-cover transition-transform duration-500 group-hover:scale-105" width="480" height="270" />
-          } @else {
-            <span class="flex size-full items-center justify-center gap-1">
-              @for (b of [4, 8, 12, 6, 10, 14, 7, 11, 5, 9]; track $index) {
-                <span class="w-1.5" [style.height.px]="b * (view() === 'grid' ? 4 : 2)" [style.background]="origin[f.origin].color"></span>
-              }
-            </span>
-          }
-          <span class="absolute top-2 right-2 flex">
-            @if (f.height) {
-              <span class="bg-yellow px-1.5 py-0.5 text-[10px] font-bold text-ink">{{ f.height >= 2160 ? '4K' : f.height + 'P' }}</span>
+        @if (f.thumb) {
+          <img [src]="f.thumb" alt="" loading="lazy" class="size-full object-cover transition-transform duration-500 group-hover:scale-105" width="480" height="270" />
+        } @else {
+          <span class="flex size-full items-center justify-center gap-1">
+            @for (b of [4, 8, 12, 6, 10, 14, 7, 11, 5, 9]; track $index) {
+              <span class="w-1.5" [style.height.px]="b * (view() === 'grid' ? 4 : 2)" [style.background]="origin[f.origin].color"></span>
             }
-            <span class="bg-base/90 px-1.5 py-0.5 text-[10px] font-bold text-text uppercase">{{ f.ext }}</span>
           </span>
-          @if (f.duration) {
-            <span class="absolute right-2 bottom-2 bg-base/90 px-1.5 py-0.5 text-[11px] font-bold tabular-nums">{{ dur(f.duration) }}</span>
+        }
+        <span class="absolute top-2 right-2 flex">
+          @if (f.height) {
+            <span class="bg-yellow px-1.5 py-0.5 text-[10px] font-bold text-ink">{{ f.height >= 2160 ? '4K' : f.height + 'P' }}</span>
           }
-          <span class="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-            <span class="grid size-12 place-items-center bg-yellow text-ink shadow-[3px_3px_0_0_#000]"><app-icon name="play" [size]="18" /></span>
-          </span>
+          <span class="bg-base/90 px-1.5 py-0.5 text-[10px] font-bold text-text uppercase">{{ f.ext }}</span>
+        </span>
+        @if (f.duration) {
+          <span class="absolute right-2 bottom-2 bg-base/90 px-1.5 py-0.5 text-[11px] font-bold tabular-nums">{{ dur(f.duration) }}</span>
+        }
+        <span class="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+          <span class="grid size-12 place-items-center bg-yellow text-ink shadow-[3px_3px_0_0_#000]"><app-icon name="play" [size]="18" /></span>
+        </span>
+      </button>
+
+      <div class="flex min-w-0 flex-1 flex-col p-4">
+        @if (editing() === f.id) {
+          <label [for]="'rename-' + f.id" class="sr-only">{{ t('lib.newName') }}</label>
+          <input
+            #rename
+            [id]="'rename-' + f.id"
+            class="field min-h-9"
+            [value]="f.name"
+            (keydown.enter)="commitRename(f, rename.value)"
+            (keydown.escape)="editing.set(null)"
+            (blur)="commitRename(f, rename.value)"
+          />
+        } @else {
+          <h2 class="truncate font-bold" [title]="f.name + '.' + f.ext">{{ f.name }}</h2>
+        }
+        <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span class="label" [style.color]="origin[f.origin].color">{{ t(origin[f.origin].key) }}</span>
+          @if (f.platform) {
+            <span class="label">· {{ f.platform }}</span>
+          }
+          <span class="label ml-auto text-text!">{{ bytes(f.size) }}</span>
+        </p>
+        <p class="label mt-1 flex items-center gap-1.5">
+          <app-icon name="clock" [size]="12" /> {{ t('lib.expires', { time: left(f.expiresAt) }) }}
+        </p>
+      </div>
+
+      <div class="flex border-t border-line-soft" [class.sm:border-t-0]="view() === 'list'" [class.sm:border-l]="view() === 'list'">
+        @if (f.kind !== 'gif') {
+          <button type="button" class="lib-action" [title]="t('common.trim')" [attr.aria-label]="t('common.trim') + ' ' + f.name" (click)="open(f, 'trim')">
+            <app-icon name="scissors" [size]="16" />
+          </button>
+          <button type="button" class="lib-action" [title]="t('common.convert')" [attr.aria-label]="t('common.convert') + ' ' + f.name" (click)="open(f, 'convert')">
+            <app-icon name="convert" [size]="16" />
+          </button>
+        }
+        <button type="button" class="lib-action" [title]="t('common.download')" [attr.aria-label]="t('common.download') + ' ' + f.name" (click)="save(f)">
+          <app-icon name="download" [size]="16" />
         </button>
-
-        <div class="flex min-w-0 flex-1 flex-col p-4">
-          @if (editing() === f.id) {
-            <label [for]="'rename-' + f.id" class="sr-only">{{ t('lib.newName') }}</label>
-            <input
-              #rename
-              [id]="'rename-' + f.id"
-              class="field min-h-9"
-              [value]="f.name"
-              (keydown.enter)="commitRename(f, rename.value)"
-              (keydown.escape)="editing.set(null)"
-              (blur)="commitRename(f, rename.value)"
-            />
-          } @else {
-            <h2 class="truncate font-bold" [title]="f.name + '.' + f.ext">{{ f.name }}</h2>
-          }
-          <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span class="label" [style.color]="origin[f.origin].color">{{ t(origin[f.origin].key) }}</span>
-            @if (f.platform) {
-              <span class="label">· {{ f.platform }}</span>
-            }
-            <span class="label ml-auto text-text!">{{ bytes(f.size) }}</span>
-          </p>
-          <p class="label mt-1 flex items-center gap-1.5">
-            <app-icon name="clock" [size]="12" /> {{ t('lib.expires', { time: left(f.expiresAt) }) }}
-          </p>
-        </div>
-
-        <div class="flex border-t border-line-soft" [class.sm:border-t-0]="view() === 'list'" [class.sm:border-l]="view() === 'list'">
-          @if (f.kind !== 'gif') {
-            <button type="button" class="lib-action" [title]="t('common.trim')" [attr.aria-label]="t('common.trim') + ' ' + f.name" (click)="open(f, 'trim')">
-              <app-icon name="scissors" [size]="16" />
-            </button>
-            <button type="button" class="lib-action" [title]="t('common.convert')" [attr.aria-label]="t('common.convert') + ' ' + f.name" (click)="open(f, 'convert')">
-              <app-icon name="convert" [size]="16" />
-            </button>
-          }
-          <button type="button" class="lib-action" [title]="t('common.download')" [attr.aria-label]="t('common.download') + ' ' + f.name" (click)="save(f)">
-            <app-icon name="download" [size]="16" />
-          </button>
-          <button type="button" class="lib-action" [title]="t('lib.rename')" [attr.aria-label]="t('lib.rename') + ' ' + f.name" (click)="editing.set(f.id)">
-            <app-icon name="pencil" [size]="16" />
-          </button>
-          <button type="button" class="lib-action" [title]="t('lib.share')" [attr.aria-label]="t('lib.share') + ' ' + f.name" (click)="share(f)">
-            <app-icon name="share" [size]="16" />
-          </button>
-          <button type="button" class="lib-action ml-auto hover:text-red-text!" [title]="t('lib.delete')" [attr.aria-label]="t('lib.delete') + ' ' + f.name" (click)="remove(f)">
-            <app-icon name="trash" [size]="16" />
-          </button>
-        </div>
-      </article>
-    } @empty {
-      <div class="pane rise col-span-full flex flex-col items-center gap-4 p-12 text-center">
-        <span class="grid size-16 place-items-center border border-yellow text-yellow"><app-icon name="library" [size]="26" /></span>
-        <p class="text-lg font-bold uppercase">{{ query() || filter() !== 'all' ? t('lib.noResults') : t('lib.empty') }}</p>
-        <p class="max-w-sm text-sm text-muted">{{ t('lib.emptyText') }}</p>
-        <button type="button" class="btn btn-primary mt-2" (click)="store.go('download')">
-          <app-icon name="download" [size]="16" /> {{ t('lib.downloadVideo') }}
+        <button type="button" class="lib-action" [title]="t('lib.rename')" [attr.aria-label]="t('lib.rename') + ' ' + f.name" (click)="editing.set(f.id)">
+          <app-icon name="pencil" [size]="16" />
+        </button>
+        <button type="button" class="lib-action" [title]="t('lib.share')" [attr.aria-label]="t('lib.share') + ' ' + f.name" (click)="share(f)">
+          <app-icon name="share" [size]="16" />
+        </button>
+        <button type="button" class="lib-action ml-auto hover:text-red-text!" [title]="t('lib.delete')" [attr.aria-label]="t('lib.delete') + ' ' + f.name" (click)="remove(f)">
+          <app-icon name="trash" [size]="16" />
         </button>
       </div>
-    }
-  </div>
-}
+    </article>
+  } @empty {
+    <div class="pane rise col-span-full flex flex-col items-center gap-4 p-12 text-center">
+      <span class="grid size-16 place-items-center border border-yellow text-yellow"><app-icon name="library" [size]="26" /></span>
+      <p class="text-lg font-bold uppercase">{{ query() || filter() !== 'all' ? t('lib.noResults') : t('lib.empty') }}</p>
+      <p class="max-w-sm text-sm text-muted">{{ t('lib.emptyText') }}</p>
+      <button type="button" class="btn btn-primary mt-2" (click)="store.go('download')">
+        <app-icon name="download" [size]="16" /> {{ t('lib.downloadVideo') }}
+      </button>
+    </div>
+  }
+</div>
 
 <dialog
   #player

@@ -128,7 +128,7 @@ describe('MyConversor', () => {
   const PASSWORD = 'Secreto#2026';
   let upload;
 
-  test('every visitor gets a guest account without a library', async () => {
+  test('every visitor gets a guest account with an empty library', async () => {
     const me = await alice.json('GET', '/api/me');
     assert.equal(me.guest, true);
     assert.equal(me.used, 0);
@@ -138,11 +138,11 @@ describe('MyConversor', () => {
     assert.deepEqual((await alice.json('GET', '/api/library')).files, []);
   });
 
-  test('guests can upload and process, but nothing is listed in a library', async () => {
+  test('guests can upload and process, and see their files in the library', async () => {
     const res = await alice.upload('guest.mp4', readFileSync(sample));
     assert.equal(res.status, 200);
     const file = await res.json();
-    assert.deepEqual((await alice.json('GET', '/api/library')).files, []);
+    assert.deepEqual((await alice.json('GET', '/api/library')).files.map((f) => f.id), [file.id]);
     const job = await alice.wait(await alice.json('POST', `/api/files/${file.id}/trim`, { start: 0, end: 1 }));
     assert.equal(job.status, 'done', job.error);
   });
@@ -156,7 +156,7 @@ describe('MyConversor', () => {
     assert.equal(bad.code, 'bad_username');
   });
 
-  test('creating an account unlocks the library (50 GB-style quota, 24 h) and keeps guest files', async () => {
+  test('creating an account raises the quota (50 GB-style, 24 h) and keeps guest files', async () => {
     const me = await alice.json('POST', '/api/auth/register', { username: 'alice', password: PASSWORD });
     assert.equal(me.guest, false);
     assert.equal(me.quota, 60 * 1024 ** 2);

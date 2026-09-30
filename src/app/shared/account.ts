@@ -1,6 +1,6 @@
-// Account dropdown under the header avatar: create an account (with password
-// rules and an optional profile photo) or sign in; when signed in, shows the
-// storage used, lets you change the photo and sign out.
+// Account dropdown under the header avatar: an identity band with the storage
+// used, then either the create-account / sign-in form (password strength and an
+// optional profile photo) or, when signed in, quick actions and sign out.
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Api } from '../core/api';
 import { formatBytes } from '../core/format';
@@ -102,6 +102,12 @@ export class Account {
     } catch (err) {
       this.store.fail(err);
     }
+  }
+
+  /** Goes to the library and closes the menu. */
+  protected openLibrary(): void {
+    this.store.go('library');
+    this.store.menu.set(null);
   }
 
   /** Signs out (the browser gets a fresh guest session). */

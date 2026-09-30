@@ -3,45 +3,70 @@ name: Continuous Deployment
 on:
   push:
     branches:
-      - main # O 'master', cambia si tu rama principal se llama diferente
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4
-
       - name: Desplegar en el servidor vía SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 30m
           script: |
+            set -e
             cd /home/ubuntu/app
-            
-            # 1. Obtener la última versión del código
             git pull origin main
-            
-            # 2. Reconstruir la imagen de Docker con los nuevos cambios
+
+            # Datos persistentes (cuentas, sesiones, archivos) FUERA del contenedor.
+            # La imagen guarda en /data: hay que montar ESA ruta o cada deploy lo borra todo.
+            DATA=/home/ubuntu/myconversor-data
+            mkdir -p "$DATA"
+            # Rescate único: copia lo que haya en el contenedor antiguo (volumen anónimo) o en ./.data.
+            if [ ! -f "$DATA/db.json" ]; then
+              sudo docker cp myconversor-app:/data/. "$DATA/" 2>/dev/null || true
+              [ -f "$DATA/db.json" ] || cp -a .data/. "$DATA/" 2>/dev/null || true
+            fi
+
             sudo docker build -t myconversor .
-            
-            # 3. Reiniciar el contenedor montando las cookies y aplicando los DNS de Google
-            sudo docker stop myconversor-app || true
-            sudo docker rm myconversor-app || true
-            
+
+            # Proveedor de PO tokens para YouTube (evita el "Sign in to confirm you're not a bot").
+            sudo docker network create myconversor-net 2>/dev/null || true
+            if sudo docker pull brainicism/bgutil-ytdlp-pot-provider; then
+              sudo docker rm -f bgutil-provider 2>/dev/null || true
+              sudo docker run -d --name bgutil-provider --network myconversor-net --restart always --init \
+                brainicism/bgutil-ytdlp-pot-provider
+            else
+              echo "AVISO: no se pudo descargar bgutil-ytdlp-pot-provider; YouTube funcionará sin PO tokens"
+            fi
+
+            # Opcionales: cookies de YouTube (cookies.txt) y variables extra (myconversor.env, p. ej. MYCONVERSOR_PROXY).
+            EXTRA=""
+            if [ -s /home/ubuntu/app/cookies.txt ]; then
+              EXTRA="$EXTRA -v /home/ubuntu/app/cookies.txt:/app/cookies.txt -e MYCONVERSOR_COOKIES=/app/cookies.txt"
+            fi
+            if [ -f /home/ubuntu/myconversor.env ]; then
+              EXTRA="$EXTRA --env-file /home/ubuntu/myconversor.env"
+            fi
+
+            # Parada limpia (SIGTERM) para que la base de datos se guarde antes de borrar el contenedor.
+            sudo docker stop -t 20 myconversor-app 2>/dev/null || true
+            sudo docker rm myconversor-app 2>/dev/null || true
             sudo docker run -d \
+              --name myconversor-app \
+              --network myconversor-net \
               --dns 8.8.8.8 \
               --dns 1.1.1.1 \
               -p 8000:8000 \
               --restart always \
-              -v $(pwd)/.data:/app/.data \
-              -v $(pwd)/cookies.txt:/app/cookies.txt \
-              -e MYCONVERSOR_COOKIES=/app/cookies.txt \
-              --name myconversor-app \
+              -v "$DATA":/data \
+              -e MYCONVERSOR_POT_URL=http://bgutil-provider:4416 \
+              $EXTRA \
               myconversor
-            
-            # 4. Asegurar la recarga de Caddy
-            sudo systemctl restart caddy
+
+            sudo docker image prune -f
+            sudo systemctl reload caddy || sudo systemctl restart caddy

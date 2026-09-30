@@ -1,6 +1,6 @@
-// Library section (accounts only): storage used per type, search, filters,
-// sorting, grid/list views and actions for every file (play, trim, convert,
-// download, rename, share, delete). Guests see an invitation to sign up.
+// Library section: storage used per type, search, filters, sorting, grid/list
+// views and actions for every file (play, trim, convert, download, rename,
+// share, delete). Guests also see an invitation to sign up.
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { Api, Origin, RemoteFile } from '../../core/api';
 import { Icon, IconName } from '../../core/icon';

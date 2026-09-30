@@ -74,7 +74,7 @@
             </button>
           </li>
         } @empty {
-          <li class="p-5 text-sm text-muted">{{ store.guest() ? t('common.libraryGuest') : t('common.libraryEmpty') }}</li>
+          <li class="p-5 text-sm text-muted">{{ t('common.libraryEmpty') }}</li>
         }
       </ul>
     </section>
@@ -83,31 +83,7 @@
 
 <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
   <div class="flex min-w-0 flex-col gap-6">
-    @if (category() !== 'audio') {
-      <section class="rise" style="--d: 40ms" aria-labelledby="preset-title">
-        <h2 id="preset-title" class="label-mark mb-3 text-text">{{ t('conv.presets') }}</h2>
-        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-          @for (p of presets; track p.id) {
-            <button
-              type="button"
-              class="pane lift relative flex min-h-28 flex-col p-3 text-left"
-              [class.border-yellow!]="presetId() === p.id"
-              [attr.aria-pressed]="presetId() === p.id"
-              (click)="presetId.set(p.id)"
-            >
-              <span class="flex items-start justify-between">
-                <app-icon [name]="p.icon" [size]="18" [class]="presetId() === p.id ? 'text-yellow' : 'text-muted'" />
-                <span class="tag px-1.5! py-0.5!" [class]="presetId() === p.id ? 'border-yellow! bg-yellow text-ink!' : ''">{{ p.tag }}</span>
-              </span>
-              <span class="mt-auto text-sm font-bold uppercase">{{ t($any('preset.' + p.id)) }}</span>
-              <span class="text-xs text-muted">{{ t($any('preset.' + p.id + 'Note')) }}</span>
-            </button>
-          }
-        </div>
-      </section>
-    }
-
-    <section class="rise" style="--d: 80ms" aria-labelledby="fmt-title">
+    <section class="rise" style="--d: 40ms" aria-labelledby="fmt-title">
       <h2 id="fmt-title" class="label-mark mb-3 text-text">{{ t('conv.formats') }}</h2>
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
         @for (f of formats(); track f.id) {
@@ -132,6 +108,30 @@
         }
       </div>
     </section>
+
+    @if (category() !== 'audio') {
+      <section class="rise" style="--d: 80ms" aria-labelledby="preset-title">
+        <h2 id="preset-title" class="label-mark mb-3 text-text">{{ t('conv.presets') }}</h2>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          @for (p of presets; track p.id) {
+            <button
+              type="button"
+              class="pane lift relative flex min-h-28 flex-col p-3 text-left"
+              [class.border-yellow!]="presetId() === p.id"
+              [attr.aria-pressed]="presetId() === p.id"
+              (click)="presetId.set(p.id)"
+            >
+              <span class="flex items-start justify-between">
+                <app-icon [name]="p.icon" [size]="18" [class]="presetId() === p.id ? 'text-yellow' : 'text-muted'" />
+                <span class="tag px-1.5! py-0.5!" [class]="presetId() === p.id ? 'border-yellow! bg-yellow text-ink!' : ''">{{ p.tag }}</span>
+              </span>
+              <span class="mt-auto text-sm font-bold uppercase">{{ t($any('preset.' + p.id)) }}</span>
+              <span class="text-xs text-muted">{{ t($any('preset.' + p.id + 'Note')) }}</span>
+            </button>
+          }
+        </div>
+      </section>
+    }
   </div>
 
   <aside class="flex h-fit flex-col gap-6 lg:sticky lg:top-24">

@@ -2,20 +2,20 @@
 // so it never competes with the content. Each section has its own scene and all
 // of them react to the pointer (no glow: the shapes themselves move), to how
 // fast it moves, and to clicks/taps, which send a shock wave through the scene:
-//   download → falling data streams that bend around the cursor, get dragged
-//              along with it and speed up near it
+//   download → a field of download arrows drifting down; near the cursor they
+//              flow around it and grow
 //   trim     → an audio waveform the cursor scrubs, with playhead and brackets;
 //              clicks leave cut markers
 //   convert  → a field of Bauhaus shapes that aim at the cursor and morph;
 //              the shock wave converts them into the next shape
-//   library  → a wall of storage cells that light up and leave a trail
+//   library  → floating file cards (coloured like the library origins) that lift
+//              under the cursor and leave a trail
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, viewChild } from '@angular/core';
 import { Section, Store } from '../core/store';
 
 const YELLOW = '250 204 21';
 const BLUE = '59 130 246';
 const RED = '239 68 68';
-const LINE = '40 45 63';
 const MUTED = '148 163 184';
 
 /** Speed (px/s) and lifetime (s) of a click shock wave. */
@@ -47,13 +47,6 @@ interface Frame {
   on: boolean;
 }
 
-interface Drop {
-  col: number;
-  y: number;
-  len: number;
-  speed: number;
-}
-
 /** Smooth falloff: 1 at the cursor, 0 at `radius` and beyond. */
 function near(dx: number, dy: number, radius: number): number {
   const d = Math.hypot(dx, dy);
@@ -79,16 +72,14 @@ export class Scene {
   private pulses: { x: number; y: number; t: number }[] = [];
   /** Cut markers left by clicks on the trim scene. */
   private marks: { x: number; t: number }[] = [];
-  /** Library trail: cell index → time it was last touched. */
+  /** Library trail: card index → time it was last touched. */
   private readonly trail = new Map<number, number>();
-  /** Falling drops of the download scene. */
-  private drops: Drop[] = [];
   private clock = 0;
   private readonly scenes: Record<Section, (f: Frame) => void> = {
-    download: (f) => this.streams(f),
+    download: (f) => this.arrows(f),
     trim: (f) => this.waveform(f),
     convert: (f) => this.shapes(f),
-    library: (f) => this.cells(f),
+    library: (f) => this.files(f),
   };
 
   /** Asks for a new frame (set once the canvas is ready). */
@@ -119,7 +110,6 @@ export class Scene {
         canvas.width = Math.round(w * dpr);
         canvas.height = Math.round(h * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        this.drops = [];
         request();
       };
       const move = (e: PointerEvent) => {
@@ -192,59 +182,45 @@ export class Scene {
     return k;
   }
 
-  /** Horizontal push away from the cursor (and along its motion) at a point. */
-  private push(x: number, y: number, radius: number, strength: number): number {
-    const m = this.m;
-    const dx = x - m.x;
-    const k = near(dx, y - m.y, radius);
-    const drag = Math.max(-1, Math.min(1, m.vx / 2500));
-    return Math.sign(dx || 1) * k * strength + k * drag * strength * 0.5;
-  }
-
-  /** Downloader: columns bend around the cursor like water around a stone; drops speed up near it. */
-  private streams({ c, w, h, dt, m, on }: Frame): void {
-    const gap = w < 700 ? 34 : 44;
-    const cols = Math.ceil(w / gap) + 1;
-    const colX = (i: number) => i * gap + ((i * 73) % 3) * 4;
-    if (!this.drops.length) {
-      for (let i = 0; i < cols; i++) {
-        for (let k = 0; k < 3; k++) {
-          this.drops.push({ col: i, y: Math.random() * h, len: 50 + Math.random() * 90, speed: 40 + Math.random() * 70 });
+  /** Downloader: download arrows drift down in a staggered grid; near the cursor they flow around it. */
+  private arrows({ c, w, h, t, m, on }: Frame): void {
+    const gap = w < 700 ? 58 : 76;
+    const shift = t * 22;
+    const base = Math.floor(shift / gap);
+    const drift = shift - base * gap;
+    for (let r = -1, y = gap / 2 - gap + drift; y < h + gap; r++, y += gap) {
+      // Rows keep their identity (seed, stagger) while they scroll down.
+      const row = r - base;
+      const odd = ((row % 2) + 2) % 2;
+      for (let col = 0, x = gap / 2 + odd * (gap / 2); x < w + gap; col++, x += gap) {
+        const seed = row * 7.3 + col * 3.1;
+        const fx = x + Math.sin(t * 0.6 + seed) * 4;
+        const hit = this.shock(fx, y);
+        const k = on ? near(fx - m.x, y - m.y, 220) : 0;
+        // Idle they point down; near the cursor they point away from it.
+        const away = Math.atan2(y - m.y, fx - m.x);
+        const angle = Math.atan2(1 - k + Math.sin(away) * k, Math.cos(away) * k) - Math.PI / 2;
+        const size = 7 + Math.sin(t * 0.8 + seed) * 0.8 + k * 4 + hit * 4;
+        const color = (row + col) % 4 === 0 ? BLUE : YELLOW;
+        c.save();
+        c.translate(fx + (fx - m.x) * k * 0.08, y + (y - m.y) * k * 0.08);
+        c.rotate(angle);
+        c.strokeStyle = `rgb(${color} / ${0.28 + k * 0.35 + hit * 0.25})`;
+        c.lineWidth = 2 + k * 0.5;
+        c.beginPath();
+        c.moveTo(-size, -size * 0.4);
+        c.lineTo(0, size * 0.6);
+        c.lineTo(size, -size * 0.4);
+        // Every few, the full download glyph: a stem and a tray.
+        if ((row * 3 + col) % 5 === 0) {
+          c.moveTo(0, -size * 1.3);
+          c.lineTo(0, size * 0.6);
+          c.moveTo(-size, size * 1.3);
+          c.lineTo(size, size * 1.3);
         }
+        c.stroke();
+        c.restore();
       }
-    }
-    const radius = w < 700 ? 150 : 210;
-    const strength = w < 700 ? 22 : 34;
-    // Column rails, drawn as bent lines.
-    for (let i = 0; i < cols; i++) {
-      const x0 = colX(i);
-      const bent = on ? near(x0 - m.x, 0, radius) : 0;
-      c.lineWidth = 1.5;
-      c.strokeStyle = bent ? `rgb(${YELLOW} / ${0.08 + bent * 0.14})` : `rgb(${LINE} / 0.8)`;
-      c.beginPath();
-      for (let y = 0; y <= h + 24; y += 24) {
-        const x = x0 + (on ? this.push(x0, y, radius, strength) : 0) + this.shock(x0, y) * 12;
-        if (y) c.lineTo(x, y);
-        else c.moveTo(x, y);
-      }
-      c.stroke();
-    }
-    // Drops falling along their (bent) column.
-    for (const d of this.drops) {
-      const x0 = colX(d.col);
-      const k = on ? near(x0 - m.x, d.y - m.y, radius) : 0;
-      const hit = this.shock(x0, d.y);
-      d.y += d.speed * (1 + k * 0.8 + hit * 1.5) * dt;
-      if (d.y - d.len > h) d.y = -Math.random() * 120;
-      const x = x0 + (on ? this.push(x0, d.y, radius, strength) : 0) + hit * 12;
-      const color = d.col % 5 === 0 ? BLUE : YELLOW;
-      const len = d.len * (1 + k * 0.3);
-      const grad = c.createLinearGradient(0, d.y - len, 0, d.y);
-      grad.addColorStop(0, `rgb(${color} / 0)`);
-      grad.addColorStop(1, `rgb(${color} / ${0.45 + k * 0.25 + hit * 0.2})`);
-      c.fillStyle = grad;
-      const width = 4 + k;
-      c.fillRect(x - width / 2, d.y - len, width, len);
     }
   }
 
@@ -336,34 +312,57 @@ export class Scene {
     }
   }
 
-  /** Library: storage cells light up under the cursor, leave a trail and flash with the click wave. */
-  private cells({ c, w, h, t, m, on }: Frame): void {
-    const size = w < 700 ? 38 : 52;
-    const gap = 6;
-    const pitch = size + gap;
-    const cols = Math.ceil(w / pitch) + 1;
+  /** Library: floating file cards lift under the cursor, leave a trail and flash with the click wave. */
+  private files({ c, w, h, t, m, on }: Frame): void {
+    const gap = w < 700 ? 62 : 84;
     const now = performance.now();
-    if (on) this.trail.set(Math.floor(m.y / pitch) * cols + Math.floor(m.x / pitch), now);
-    const colors = [YELLOW, BLUE, RED];
-    for (let y = 0, row = 0; y < h; y += pitch, row++) {
-      for (let x = 0, col = 0; x < w; x += pitch, col++) {
-        const i = row * cols + col;
+    const colors = [YELLOW, BLUE, RED, MUTED];
+    for (let row = 0, y = gap / 2; y < h + gap; row++, y += gap) {
+      for (let col = 0, x = gap / 2 + (row % 2) * (gap / 2); x < w + gap; col++, x += gap) {
+        const i = row * 1000 + col;
+        const seed = row * 5.7 + col * 2.3;
+        const fx = x + Math.sin(t * 0.45 + seed) * 5;
+        const fy = y + Math.cos(t * 0.5 + seed * 1.3) * 5;
+        const k = on ? near(fx - m.x, fy - m.y, 200) : 0;
+        if (k > 0.35) this.trail.set(i, now);
         const touched = this.trail.get(i);
         const fade = touched ? Math.max(0, 1 - (now - touched) / 1600) : 0;
         if (touched && !fade) this.trail.delete(i);
-        const cx = x + size / 2;
-        const cy = y + size / 2;
-        const k = Math.max(fade * 0.7, on ? near(cx - m.x, cy - m.y, 150) * 0.5 : 0, this.shock(cx, cy) * 0.6);
-        const blink = Math.max(0, Math.sin(t * 0.7 + i * 2.39) - 0.97) * 10;
-        const lit = Math.max(k, blink * 0.5);
-        const inset = lit * 3;
-        c.strokeStyle = `rgb(${LINE} / ${0.55 + lit * 0.45})`;
-        c.lineWidth = 1.5;
-        c.strokeRect(x + 0.5, y + 0.5, size, size);
-        if (lit > 0.02) {
-          c.fillStyle = `rgb(${colors[i % 3]} / ${lit * 0.3})`;
-          c.fillRect(x + inset, y + inset, size - inset * 2, size - inset * 2);
+        const lit = Math.max(k, fade * 0.6, this.shock(fx, fy) * 1.2);
+        const s = 1 + lit * 0.3;
+        const cw = 8 * s;
+        const ch = 11 * s;
+        const fold = 4 * s;
+        const color = colors[(row * 3 + col) % 4];
+        c.save();
+        c.translate(fx, fy - lit * 6);
+        c.rotate(Math.sin(t * 0.4 + seed) * 0.1 * (1 - lit));
+        c.beginPath();
+        c.moveTo(-cw, -ch);
+        c.lineTo(cw - fold, -ch);
+        c.lineTo(cw, -ch + fold);
+        c.lineTo(cw, ch);
+        c.lineTo(-cw, ch);
+        c.closePath();
+        if (lit > 0.03) {
+          c.fillStyle = `rgb(${color} / ${lit * 0.22})`;
+          c.fill();
         }
+        c.strokeStyle = `rgb(${color} / ${0.26 + lit * 0.4})`;
+        c.lineWidth = 1.8;
+        c.stroke();
+        // Folded corner and two "content" lines.
+        c.beginPath();
+        c.moveTo(cw - fold, -ch);
+        c.lineTo(cw - fold, -ch + fold);
+        c.lineTo(cw, -ch + fold);
+        c.moveTo(-cw * 0.5, 0);
+        c.lineTo(cw * 0.5, 0);
+        c.moveTo(-cw * 0.5, ch * 0.45);
+        c.lineTo(cw * 0.2, ch * 0.45);
+        c.lineWidth = 1.4;
+        c.stroke();
+        c.restore();
       }
     }
   }

@@ -121,7 +121,7 @@ export class Store {
 
   readonly guest = computed(() => this.me()?.guest !== false);
   readonly used = computed(() => this.me()?.used ?? 0);
-  readonly quota = computed(() => this.me()?.quota ?? 2 * 1024 ** 3);
+  readonly quota = computed(() => this.me()?.quota ?? 10 * 1024 ** 3);
 
   private readonly jobOptions = new Map<string, JobOptions>();
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -347,7 +347,7 @@ export class Store {
 
   /** Handles a finished job: library, sound and download (or custom action). */
   private finish(file: RemoteFile, opts: JobOptions): void {
-    if (!this.guest()) this.files.update((list) => [file, ...list.filter((f) => f.id !== file.id)]);
+    this.files.update((list) => [file, ...list.filter((f) => f.id !== file.id)]);
     void this.reload();
     this.sfx.success();
     if (opts.onDone) {

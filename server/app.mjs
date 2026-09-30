@@ -77,7 +77,7 @@ export function createApp(options) {
     ttlMs = 24 * HOUR,
     guestTtlMs = 2 * HOUR,
     quotaBytes = 50 * 1024 ** 3,
-    guestQuotaBytes = 2 * 1024 ** 3,
+    guestQuotaBytes = 10 * 1024 ** 3,
     maxJobs = 2,
     cookies,
     extraHosts = [],
@@ -411,10 +411,9 @@ export function createApp(options) {
 
   // ------------------------------------------------------------- library
 
-  // Only accounts have a library; guests' files are temporary and hidden.
+  // Guests have a library too (smaller quota, shorter expiry).
   api.get('/library', (req, res) => {
-    const files = req.user.username ? db.filesOf(req.user.id).map(publicFile) : [];
-    res.json({ ...me(req.user), files });
+    res.json({ ...me(req.user), files: db.filesOf(req.user.id).map(publicFile) });
   });
 
   api.put('/upload', async (req, res) => {

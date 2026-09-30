@@ -91,7 +91,12 @@ export async function ensureBinaries({ dir, log = console.log } = {}) {
     gunzip: false,
     log,
   });
-  // Platforms change often: keep our own copy of yt-dlp up to date in the background.
-  if (ytdlp === ytdlpPath) spawn(ytdlp, ['-U'], { stdio: 'ignore' }).on('error', () => {});
+  // Platforms (YouTube above all) change often: keep our own copy of yt-dlp on the
+  // nightly channel, which gets extractor fixes first, now and every 6 hours.
+  if (ytdlp === ytdlpPath) {
+    const update = () => spawn(ytdlp, ['--update-to', 'nightly'], { stdio: 'ignore' }).on('error', () => {});
+    update();
+    setInterval(update, 6 * 3600_000).unref();
+  }
   return { ffmpeg, ytdlp };
 }

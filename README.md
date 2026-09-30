@@ -145,8 +145,8 @@ En el móvil los menús se abren como una hoja a lo ancho, bajo la barra.
 | | 👻 Invitado | 👤 Con cuenta |
 | --- | --- | --- |
 | Descargar, recortar y convertir | ✅ | ✅ |
-| Biblioteca | ❌ | ✅ |
-| Espacio | 2 GB | **50 GB** |
+| Biblioteca | ✅ | ✅ |
+| Espacio | 10 GB | **50 GB** |
 | Los archivos se borran a las | 2 h | **24 h** |
 | Foto de perfil | ❌ | ✅ |
 
@@ -214,10 +214,10 @@ test/app.test.mjs         # The test
 
 `test/app.test.mjs` es **un único archivo de test** que prueba todo contra el servidor real:
 
-- 👻 **Invitados**: sin biblioteca, con 2 GB y borrado a las 2 h, aunque pueden procesar.
+- 👻 **Invitados**: con biblioteca propia, borrado a las 2 h, y pueden procesar.
 - 🔐 **Cuentas**:
   - Reglas de contraseña.
-  - El registro desbloquea la biblioteca y los 24 h, y conserva lo hecho como invitado.
+  - El registro sube el espacio y los 24 h, y conserva lo hecho como invitado.
   - Foto de perfil, inicio de sesión uniendo archivos y cierre de sesión.
 - 📁 **Archivos**:
   - Subida, miniatura, streaming con `Range` y descarga con nombre propio.
@@ -261,9 +261,11 @@ Todo ocurre en carpetas temporales que se borran al terminar. Hay además un tes
 | `MYCONVERSOR_TTL_HOURS` | `24` | Horas que se guardan los archivos de una cuenta |
 | `MYCONVERSOR_GUEST_TTL_HOURS` | `2` | Horas para invitados |
 | `MYCONVERSOR_QUOTA_GB` | `50` | Espacio por cuenta |
-| `MYCONVERSOR_GUEST_QUOTA_GB` | `2` | Espacio por invitado |
+| `MYCONVERSOR_GUEST_QUOTA_GB` | `10` | Espacio por invitado |
 | `MYCONVERSOR_MAX_JOBS` | `2` | Descargas y codificaciones simultáneas |
 | `MYCONVERSOR_COOKIES` | — | `cookies.txt` del navegador, para plataformas que piden verificar que no eres un bot |
+| `MYCONVERSOR_POT_URL` | — | Servidor [bgutil](https://github.com/Brainicism/bgutil-ytdlp-pot-provider) de PO tokens para YouTube (p. ej. `http://bgutil-provider:4416`) |
+| `MYCONVERSOR_PROXY` | — | Proxy para yt-dlp (p. ej. `socks5://127.0.0.1:1080`), si YouTube bloquea la IP del servidor |
 | `MYCONVERSOR_FFMPEG` / `MYCONVERSOR_YTDLP` | auto | Rutas propias a los binarios |
 
 🐳 Docker: `docker build -t myconversor . && docker run -p 8000:8000 -v myconversor:/data myconversor`.

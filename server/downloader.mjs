@@ -55,7 +55,9 @@ export function toAppError(text) {
 
 /**
  * Common yt-dlp flags. YouTube now needs a JavaScript runtime to unlock all
- * formats; the Node running this server is used for that.
+ * formats; the Node running this server is used for that. YouTube clients are
+ * left to yt-dlp's defaults (they change with each release). `bins.ytdlpArgs`
+ * holds server-wide extras (proxy, PO token provider; see index.mjs).
  */
 export function baseArgs(bins, cookies) {
   const args = [
@@ -66,8 +68,7 @@ export function baseArgs(bins, cookies) {
     bins.ffmpeg,
     '--js-runtimes',
     `node:${process.execPath}`,
-    '--extractor-args',
-    'youtube:player_client=android,web',
+    ...(bins.ytdlpArgs ?? []),
   ];
   if (cookies) args.push('--cookies', cookies);
   return args;

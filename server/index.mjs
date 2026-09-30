@@ -14,6 +14,11 @@ const bins = await ensureBinaries({
   dir: join(root, '.bin'),
   log: (m) => console.log(`[MyConversor] ${m}`),
 });
+// Extra yt-dlp flags for servers whose IP YouTube treats as a bot (cloud hosts):
+// a PO token provider (bgutil HTTP server) and/or a proxy.
+bins.ytdlpArgs = [];
+if (env.MYCONVERSOR_POT_URL) bins.ytdlpArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${env.MYCONVERSOR_POT_URL}`);
+if (env.MYCONVERSOR_PROXY) bins.ytdlpArgs.push('--proxy', env.MYCONVERSOR_PROXY);
 const { app, close } = createApp({
   bins,
   dataDir: resolve(env.MYCONVERSOR_DATA ?? join(root, '.data')),
@@ -21,7 +26,7 @@ const { app, close } = createApp({
   ttlMs: Number(env.MYCONVERSOR_TTL_HOURS ?? 24) * 3600_000,
   guestTtlMs: Number(env.MYCONVERSOR_GUEST_TTL_HOURS ?? 2) * 3600_000,
   quotaBytes: Number(env.MYCONVERSOR_QUOTA_GB ?? 50) * 1024 ** 3,
-  guestQuotaBytes: Number(env.MYCONVERSOR_GUEST_QUOTA_GB ?? 2) * 1024 ** 3,
+  guestQuotaBytes: Number(env.MYCONVERSOR_GUEST_QUOTA_GB ?? 10) * 1024 ** 3,
   maxJobs: Number(env.MYCONVERSOR_MAX_JOBS ?? 2),
   cookies: env.MYCONVERSOR_COOKIES || undefined,
   log: console.error,
