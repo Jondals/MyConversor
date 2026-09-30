@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v2.4.1
+  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v2.4.2
 </p>
 
 ---

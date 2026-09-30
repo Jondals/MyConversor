@@ -62,7 +62,7 @@ jobs:
             fi
             EXTRA=""
             WARP=off
-            for i in $(seq 1 12); do
+            for i in $(seq 1 36); do   # hasta 3 min: el primer arranque registra WARP
               if sudo docker run --rm --network myconversor-net curlimages/curl -s --max-time 10 \
                    --socks5-hostname warp:1080 https://www.cloudflare.com/cdn-cgi/trace | grep -q 'warp=on'; then
                 WARP=on; break
@@ -70,7 +70,7 @@ jobs:
               sleep 5
             done
             if [ "$WARP" = on ]; then
-              EXTRA="-e MYCONVERSOR_PROXY=socks5://warp:1080"
+              EXTRA="-e MYCONVERSOR_PROXY=socks5h://warp:1080"   # socks5h: el DNS también va por WARP
             else
               echo "AVISO: WARP no responde; yt-dlp saldrá con la IP del servidor (logs: sudo docker logs warp)"
             fi
