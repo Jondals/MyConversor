@@ -365,7 +365,7 @@ export const en: Dict = {
 
   'err.invalid_url': 'The link is not valid.',
   'err.unsupported_platform': 'That platform is not supported. Use YouTube, TikTok, Instagram, X, Twitch or Vimeo.',
-  'err.bot_check': 'The platform wants to check you are not a bot. Set MYCONVERSOR_COOKIES with your browser cookies.',
+  'err.bot_check': 'The platform blocked the download for now. Try again in a few minutes.',
   'err.no_video': "That link doesn't contain a supported video.",
   'err.private_video': 'The video is private.',
   'err.too_large': "The file doesn't fit in your available storage.",

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v2.4.0
+  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v2.4.1
 </p>
 
 ---
@@ -279,9 +279,9 @@ Cada `git push` a `main` despliega solo (`.github/workflows/deploy.yml`, por SSH
 
 - El servidor se pone **igual que GitHub** (`git reset --hard`): no edites código allí.
 - Los datos (cuentas, sesiones, archivos) viven en `/home/ubuntu/myconversor-data`, montado en `/data`, así que **sobreviven a cada deploy**.
-- Junto a la app corre `bgutil-provider`, que da a yt-dlp los **PO tokens** de YouTube.
+- Junto a la app corren `bgutil-provider`, que da a yt-dlp los **PO tokens** de YouTube, y `warp`, un proxy **Cloudflare WARP**: YouTube ve una IP de Cloudflare en vez de la de Oracle. **Sin cookies.**
 - yt-dlp se actualiza solo al canal **nightly** al arrancar y cada 6 h.
-- Opcionales en el servidor: `/home/ubuntu/app/cookies.txt` (cookies de YouTube) y `/home/ubuntu/myconversor.env` (p. ej. `MYCONVERSOR_PROXY=...`).
+- Opcional en el servidor: `/home/ubuntu/myconversor.env` (p. ej. otro `MYCONVERSOR_PROXY=...`, que sustituye a WARP).
 
 > ⚠️ Descarga solo contenido que tengas derecho a usar y respeta los términos de cada plataforma.
 

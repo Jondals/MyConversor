@@ -364,7 +364,7 @@ export const es = {
 
   'err.invalid_url': 'El enlace no es válido.',
   'err.unsupported_platform': 'Esa plataforma no está soportada. Usa YouTube, TikTok, Instagram, X, Twitch o Vimeo.',
-  'err.bot_check': 'La plataforma pide verificar que no eres un bot. Configura MYCONVERSOR_COOKIES con las cookies de tu navegador.',
+  'err.bot_check': 'La plataforma ha bloqueado la descarga temporalmente. Prueba otra vez en unos minutos.',
   'err.no_video': 'Ese enlace no contiene un vídeo compatible.',
   'err.private_video': 'El vídeo es privado.',
   'err.too_large': 'El archivo no cabe en tu espacio disponible.',
