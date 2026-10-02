@@ -94,8 +94,13 @@ export class Library {
     return f === 'all' ? list.length : list.filter((i) => i.origin === f).length;
   }
 
-  /** Opens the player dialog. */
+  /** Opens the player dialog (or a document in a new tab). */
   protected play(file: RemoteFile): void {
+    // Documents open in a new tab (the browser shows PDFs and text; the rest downloads).
+    if (file.kind === 'document') {
+      window.open(file.url, '_blank', 'noopener');
+      return;
+    }
     this.playing.set(file);
     this.dialog()?.nativeElement.showModal();
   }

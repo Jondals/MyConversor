@@ -1,6 +1,8 @@
-// MyConversor end-to-end test: accounts, uploads, downloads (yt-dlp), trims and
-// conversions (FFmpeg), the library, quotas, expiry, music links and the web app.
-// Everything runs in a temporary folder that is deleted at the end.
+// MyConversor end-to-end test: accounts (created and deleted again), uploads,
+// downloads (yt-dlp), trims, media and image conversions (FFmpeg), document
+// conversions (LibreOffice, when installed), the library, quotas, expiry, music
+// links and the web app. Everything runs in a temporary folder that is deleted
+// at the end, and the last test checks no account is left in the database.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
@@ -13,11 +15,14 @@ import { ensureBinaries } from '../server/binaries.mjs';
 import { createApp, passwordProblems } from '../server/app.mjs';
 import { summarizeFormats } from '../server/downloader.mjs';
 import { musicSource, parseSpotifyEmbed, parseSpotifyUrl } from '../server/music.mjs';
+import { findOffice } from '../server/office.mjs';
 
 const root = resolve(fileURLToPath(import.meta.url), '../..');
 const tmp = mkdtempSync(join(tmpdir(), 'myconversor-test-'));
 const webDir = process.env.MYCONVERSOR_TEST_WEB; // set by `pnpm check`
-let bins, ctx, server, media, base, sample;
+let bins, ctx, server, media, base, sample, picture;
+/** LibreOffice, if installed: document tests are skipped without it. */
+const office = findOffice();
 
 /** Minimal cookie-keeping client: each instance is one browser/visitor. */
 class Client {
@@ -93,6 +98,10 @@ before(async () => {
     sample,
   ]);
   assert.equal(gen.status, 0, String(gen.stderr));
+  picture = join(tmp, 'picture.png');
+  const still = spawnSync(bins.ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=320x240', '-frames:v', '1', picture]);
+  assert.equal(still.status, 0, String(still.stderr));
+  bins.office = office;
 
   // Stand-in for a video platform: serves the sample over HTTP for yt-dlp.
   media = createServer((req, res) => {
@@ -196,10 +205,15 @@ describe('MyConversor', () => {
     assert.equal(lib.files[0].id, upload.id);
   });
 
-  test('non-media uploads are rejected with a code', async () => {
-    const res = await alice.upload('notes.txt', new TextEncoder().encode('hola'));
+  test('unknown files are rejected with a code; documents are accepted', async () => {
+    const res = await alice.upload('random.bin', new TextEncoder().encode('hola'));
     assert.equal(res.status, 415);
     assert.equal((await res.json()).code, 'not_media');
+    const doc = await alice.upload('notes.txt', new TextEncoder().encode('Hola\nMyConversor'));
+    assert.equal(doc.status, 200);
+    const file = await doc.json();
+    assert.equal(file.kind, 'document');
+    assert.equal(file.thumb, null);
   });
 
   test('files stream with range requests and download with a custom name', async () => {
@@ -258,6 +272,60 @@ describe('MyConversor', () => {
     });
   }
 
+  test('images: upload, thumbnail and every still format', async () => {
+    const res = await alice.upload('picture.png', readFileSync(picture));
+    assert.equal(res.status, 200);
+    const png = await res.json();
+    assert.equal(png.kind, 'image');
+    assert.deepEqual([png.width, png.height], [320, 240]);
+    assert.ok(png.thumb);
+    for (const format of ['jpg', 'webp', 'avif', 'bmp', 'tiff', 'ico', 'gif']) {
+      const job = await alice.wait(await alice.json('POST', `/api/files/${png.id}/convert`, { group: 'image', format, quality: 'balanced' }));
+      assert.equal(job.status, 'done', `${format}: ${job.error}`);
+      assert.equal(job.file.ext, format);
+      assert.ok(job.file.size > 0);
+    }
+    const small = await alice.wait(await alice.json('POST', `/api/files/${png.id}/convert`, { group: 'image', format: 'jpg', preset: 'sd' }));
+    assert.equal(small.status, 'done', small.error);
+    const bad = await alice.json('POST', `/api/files/${png.id}/convert`, { group: 'audio', format: 'mp3' }, 400);
+    assert.equal(bad.code, 'bad_format');
+  });
+
+  test('a video frame can be saved as an image', async () => {
+    const job = await alice.wait(await alice.json('POST', `/api/files/${upload.id}/convert`, { group: 'image', format: 'png' }));
+    assert.equal(job.status, 'done', job.error);
+    assert.equal(job.file.kind, 'image');
+    assert.deepEqual([job.file.width, job.file.height], [640, 360]);
+  });
+
+  test('documents need LibreOffice: without it the server says so', { skip: Boolean(office) && 'LibreOffice is installed' }, async () => {
+    const doc = await (await alice.upload('memo.txt', new TextEncoder().encode('Hola'))).json();
+    const res = await alice.json('POST', `/api/files/${doc.id}/convert`, { group: 'document', format: 'pdf' }, 503);
+    assert.equal(res.code, 'office_missing');
+    assert.equal((await alice.json('GET', '/api/health')).tools.office, false);
+  });
+
+  test('documents: text, spreadsheet and PDF conversions (LibreOffice)', { skip: !office && 'needs LibreOffice' }, async () => {
+    const convert = async (id, group, format) => {
+      const job = await alice.wait(await alice.json('POST', `/api/files/${id}/convert`, { group, format }), 180_000);
+      assert.equal(job.status, 'done', `${format}: ${job.error}`);
+      assert.equal(job.file.ext, format);
+      assert.ok(job.file.size > 0);
+      return job.file;
+    };
+    const txt = await (await alice.upload('memo.txt', new TextEncoder().encode('MyConversor\nDocument test'))).json();
+    const pdf = await convert(txt.id, 'document', 'pdf');
+    await convert(txt.id, 'document', 'docx');
+    await convert(pdf.id, 'document', 'docx');
+    await convert(pdf.id, 'document', 'pptx');
+    const page = await convert(pdf.id, 'image', 'png');
+    assert.equal(page.kind, 'image');
+    const csv = await (await alice.upload('table.csv', new TextEncoder().encode('a,b\n1,2\n'))).json();
+    await convert(csv.id, 'document', 'xlsx');
+    const picturePdf = await alice.wait(await alice.json('POST', `/api/files/${(await (await alice.upload('p.png', readFileSync(picture))).json()).id}/convert`, { group: 'document', format: 'pdf' }), 180_000);
+    assert.equal(picturePdf.status, 'done', picturePdf.error);
+  });
+
   test('qualities keep the best frame rate per resolution and stop at 4K', () => {
     const f = (width, height, fps) => ({ vcodec: 'avc1', width, height, fps });
     const info = { formats: [f(7680, 4320, 60), f(3840, 2160, 60), f(2560, 1440, 60), f(1920, 1080, 30), f(1920, 1080, 60), f(1280, 720, 30), f(1080, 1920, 30)] };
@@ -278,7 +346,7 @@ describe('MyConversor', () => {
   });
 
   test('health reports the tools, and the trimmer strip is made with FFmpeg', async () => {
-    assert.deepEqual(await alice.json('GET', '/api/health'), { ok: true, tools: { ffmpeg: true, ytdlp: true } });
+    assert.deepEqual(await alice.json('GET', '/api/health'), { ok: true, tools: { ffmpeg: true, ytdlp: true, office: Boolean(office) } });
     const res = await alice.req('GET', `/api/files/${upload.id}/strip`);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('content-type'), 'image/jpeg');
@@ -409,6 +477,29 @@ describe('MyConversor', () => {
     const info = await alice.json('POST', '/api/info', { url });
     assert.equal(info.hasVideo, true);
     assert.ok(info.heights.includes(1080));
+  });
+
+  test('deleting an account removes the user, its sessions and its files', async () => {
+    const bob = new Client();
+    await bob.json('POST', '/api/auth/register', { username: 'bob', password: PASSWORD });
+    const file = await (await bob.upload('bob.mp4', readFileSync(sample))).json();
+    const fresh = await bob.json('DELETE', '/api/me');
+    assert.equal(fresh.guest, true);
+    assert.equal(ctx.db.byUsername('bob'), null);
+    assert.equal(ctx.db.file(file.id), null);
+    assert.equal(existsSync(join(tmp, 'data/files', file.id)), false);
+    const login = await bob.json('POST', '/api/auth/login', { username: 'bob', password: PASSWORD }, 401);
+    assert.equal(login.code, 'bad_login');
+  });
+
+  test('every account made by the test is deleted again', async () => {
+    const phone = new Client();
+    await phone.json('POST', '/api/auth/login', { username: 'alice', password: PASSWORD });
+    await phone.json('DELETE', '/api/me');
+    await alice.json('DELETE', '/api/me');
+    ctx.db.flush();
+    const saved = JSON.parse(readFileSync(join(tmp, 'data/db.json'), 'utf8'));
+    assert.deepEqual(Object.values(saved.users).filter((u) => u.username), []);
   });
 
   test('serves the single-page web app', { skip: !webDir && 'set by pnpm check' }, async () => {

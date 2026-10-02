@@ -110,6 +110,19 @@ export class Account {
     this.store.menu.set(null);
   }
 
+  /** Deletes the account and all its files after confirming (a fresh guest session follows). */
+  protected async deleteAccount(): Promise<void> {
+    if (!confirm(this.t('account.deleteConfirm'))) return;
+    try {
+      this.store.me.set(await this.api.deleteAccount());
+      await this.store.reload();
+      this.store.toast(this.t('account.deleted'));
+      this.store.menu.set(null);
+    } catch (err) {
+      this.store.fail(err);
+    }
+  }
+
   /** Signs out (the browser gets a fresh guest session). */
   protected async logout(): Promise<void> {
     try {

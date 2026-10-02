@@ -2,6 +2,7 @@
 // from the server), toasts, open menus and display options.
 import { Injectable, afterNextRender, computed, inject, signal } from '@angular/core';
 import { Api, ApiError, ApiJob, MediaKind, Me, Origin, RemoteFile } from './api';
+import { kindOfExt } from './formats';
 import { I18n, Key } from './i18n';
 import { Sfx } from './sfx';
 
@@ -113,6 +114,8 @@ export class Store {
   readonly online = signal<boolean | null>(null);
   /** Round-trip time of the last health check, in ms. */
   readonly latency = signal<number | null>(null);
+  /** Whether the server can convert documents (LibreOffice installed). */
+  readonly office = signal(false);
 
   readonly me = signal<Me | null>(null);
   readonly files = signal<RemoteFile[]>([]);
@@ -152,7 +155,8 @@ export class Store {
   async checkHealth(): Promise<void> {
     const start = performance.now();
     try {
-      const { ok } = await this.api.health();
+      const { ok, tools } = await this.api.health();
+      this.office.set(Boolean(tools?.office));
       this.latency.set(Math.round(performance.now() - start));
       this.online.set(ok);
     } catch {
@@ -220,7 +224,7 @@ export class Store {
       name: dot > 0 ? file.name.slice(0, dot) : file.name,
       ext: dot > 0 ? file.name.slice(dot + 1).toLowerCase() : '',
       size: file.size,
-      kind: file.type.startsWith('audio') ? 'audio' : 'video',
+      kind: kindOfExt(dot > 0 ? file.name.slice(dot + 1).toLowerCase() : ''),
       duration: 0,
       width: 0,
       height: 0,

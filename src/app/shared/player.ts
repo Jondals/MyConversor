@@ -1,9 +1,9 @@
-// Music inside the Options menu, in two blocks:
-//  - Player (top): a vinyl that slides out of its sleeve and spins while
-//    playing, previous/play/next, progress, music and effects volume.
-//  - Playlist (bottom): add songs from a YouTube or Spotify link (song or
-//    playlist) or upload files; up to 30 songs kept in this browser, each
-//    one removable.
+// Music inside the Options menu (under the options, whose music volume slider
+// controls this same player), in one Playlist block:
+//  - Player (top of the block): a vinyl that slides out of its sleeve and
+//    spins while playing, previous/play/next and progress.
+//  - Playlist: add songs from a YouTube or Spotify link (song or playlist) or
+//    upload files; up to 30 songs kept in this browser, each one removable.
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { formatBytes, formatDuration } from '../core/format';
 import { Icon } from '../core/icon';
@@ -16,7 +16,7 @@ import { Store } from '../core/store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section [attr.aria-label]="t('music.title')">
-      <div class="flex items-center gap-4 p-4">
+      <div class="flex items-center gap-4 pt-4">
         <span class="record" [class.playing]="music.playing()" aria-hidden="true">
           <span class="record-disc"><span class="record-label"></span></span>
           <span class="record-sleeve"></span>
@@ -27,7 +27,7 @@ import { Store } from '../core/store';
         </div>
       </div>
 
-      <div class="px-4">
+      <div class="pt-3">
         <input
           type="range"
           class="range w-full"
@@ -44,7 +44,7 @@ import { Store } from '../core/store';
         </p>
       </div>
 
-      <div class="flex items-center justify-center gap-3 px-4 pt-2 pb-4">
+      <div class="flex items-center justify-center gap-3 pt-2">
         <button type="button" class="btn-icon" [disabled]="!music.playable()" [attr.aria-label]="t('music.previous')" (click)="music.previous()">
           <app-icon name="back" [size]="16" />
         </button>
@@ -62,20 +62,6 @@ import { Store } from '../core/store';
           <app-icon name="forward" [size]="16" />
         </button>
       </div>
-
-      <div class="grid grid-cols-[auto_4.5rem_1fr_2.5rem] items-center gap-x-2 gap-y-3 border-t border-line-soft p-4">
-        <app-icon name="music" [size]="15" class="text-muted" />
-        <label for="music-volume" class="text-sm font-semibold">{{ t('music.music') }}</label>
-        <input id="music-volume" type="range" class="range" min="0" max="100" step="5" [value]="music.volume() * 100"
-          (input)="music.setVolume(+$any($event.target).value / 100)" />
-        <span class="label text-right text-yellow!">{{ (music.volume() * 100).toFixed(0) }}%</span>
-
-        <app-icon name="volume" [size]="15" class="text-muted" />
-        <label for="sfx-volume" class="text-sm font-semibold">{{ t('music.sounds') }}</label>
-        <input id="sfx-volume" type="range" class="range" min="0" max="100" step="5" [value]="store.sfx.volume() * 100"
-          [disabled]="!store.sfx.enabled()" (change)="store.sfx.setVolume(+$any($event.target).value / 100)" />
-        <span class="label text-right text-yellow!">{{ (store.sfx.volume() * 100).toFixed(0) }}%</span>
-      </div>
     </section>
   `,
 })
@@ -92,7 +78,7 @@ export class Player {
 
 @Component({
   selector: 'app-playlist',
-  imports: [Icon],
+  imports: [Icon, Player],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="p-4" aria-labelledby="playlist-title">
@@ -101,7 +87,11 @@ export class Player {
         <span class="tag">{{ music.songs().length }} / {{ max }}</span>
       </p>
 
-      <form class="mt-3 flex" (submit)="$event.preventDefault(); addLink(link)">
+      <app-player />
+
+      <div class="mt-4 border-t border-line-soft pt-4"></div>
+
+      <form class="flex" (submit)="$event.preventDefault(); addLink(link)">
         <label for="music-link" class="sr-only">{{ t('music.linkLabel') }}</label>
         <input
           #link

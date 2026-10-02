@@ -1,9 +1,15 @@
-# Single image: builds the prerendered web app and runs the Node server.
-FROM node:22-slim
+# Single image: builds the prerendered web app and runs the Node server, with
+# LibreOffice for the document conversions (PDF, Word, Excel, PowerPoint...).
+FROM node:24-slim
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-draw \
+      fonts-dejavu fonts-liberation fonts-noto-core \
+ && rm -rf /var/lib/apt/lists/* \
+ && corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 # yt-dlp's bgutil plugin fetches YouTube PO tokens from the bgutil-provider

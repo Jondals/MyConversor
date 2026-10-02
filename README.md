@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v2.4.2
+  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v3.0.0
 </p>
 
 ---
 
 ## 🚀 Arrancar en 1 minuto
 
-Requisitos: **Node 20.19+** (recomendado 22) y **pnpm** (viene con Node: `corepack enable`).
+Requisitos: **Node 22.22+ / 24.15+** (Angular 22 lo exige) y **pnpm 12** (viene con Node: `corepack enable`; la versión exacta vive en `package.json` → `devEngines`, y pnpm la descarga sola si hace falta).
 
 ```bash
 pnpm install
@@ -85,32 +85,21 @@ Todo es **una sola página**: las secciones se muestran u ocultan sin recargar, 
   - `[` `]` y `M`.
 
 ### 🔄 Convertir
-- 🎞️ **Vídeo**:
-  - **MP4** (H.264/H.265)
-  - **WebM** (VP9/AV1)
-  - **MKV** (H.264/H.265/AV1/VP9)
-  - **MOV** (ProRes/H.264)
-  - **AVI**, **M4V**, **FLV**, **MPEG** y **OGV**
-- 🖼️ **Animación**: **GIF**, **WebP animado** y **APNG**.
-- 🎵 **Audio**:
-  - Con pérdida: **MP3, AAC, OGG, Opus, WMA y AC3**.
-  - Sin pérdida: **WAV, FLAC, ALAC y AIFF**.
-- Arriba los **formatos** (contenedores) y debajo los perfiles:
-  - Original
-  - Reels/TikTok (9:16)
-  - Instagram (1:1)
-  - YouTube 4K
-  - YouTube HD
-  - HD 720p
-  - SD 480p
-  - Discord (< 25 MB)
-- Calidad alta, media o ligera, y bitrate de audio.
-- Una **previsión** con el peso y el tiempo estimados antes de convertir.
+Convertidor **universal**: según lo que subas (o elijas de tu biblioteca), solo se muestran las pestañas y formatos de salida a los que ese archivo puede convertirse — nunca una conversión imposible. La disposición no cambia de un grupo a otro, así que cambiar de pestaña no hace saltar la página.
+- 🎞️ **Vídeo**: MP4 (H.264/H.265), WebM (VP9/AV1), MKV (H.264/H.265/AV1/VP9), MOV (ProRes/H.264), AVI, M4V, FLV, MPEG y OGV.
+- 🖼️ **Animación**: GIF, WebP animado y APNG.
+- 🎵 **Audio**: con pérdida (MP3, AAC, OGG, Opus, WMA, AC3) y sin pérdida (WAV, FLAC, ALAC, AIFF).
+- 🖼️ **Imagen**: PNG, JPG, WebP, AVIF, BMP, TIFF, ICO y GIF (fijo). También saca un fotograma de cualquier vídeo o GIF como imagen.
+- 📄 **Documento** (necesita LibreOffice en el servidor, ver Configuración): PDF, DOCX, ODT, RTF, TXT, HTML, EPUB, XLSX, ODS, CSV, PPTX y ODP. Incluye PDF ⇄ Word/PowerPoint/Excel, exportar una página de un PDF o de un documento como imagen, etc.
+- Perfiles de vídeo e imagen: Original, Reels/TikTok (9:16), Instagram (1:1), YouTube 4K, YouTube HD, HD 720p, SD 480p y Discord (< 25 MB).
+- Códec de vídeo, calidad (alta/media/ligera), bitrate de audio y fotogramas por segundo (animación) — cada ajuste se desactiva solo cuando no aplica a la salida elegida, en vez de desaparecer.
+- Una **previsión** arriba del todo con el peso y el tiempo estimados, antes de convertir.
 - Botón **Eliminar** para borrar el archivo cargado.
 
 ### 📚 Biblioteca
-- También para **invitados** (10 GB, se borra a las 2 h), con un aviso de lo que se gana creando cuenta.
+- También para **invitados** (10 GB, se borra a las 2 h): el almacenamiento y el aviso de cuenta comparten una sola franja compacta, sin el scroll de antes.
 - Espacio usado y libre, con una barra por tipo: descargas, recortes, conversiones y subidos.
+- Las imágenes muestran su miniatura y los documentos un icono con su extensión; al reproducir, una imagen o un documento se abren en una pestaña nueva en vez del reproductor.
 - Búsqueda, filtros y orden (reciente, antiguo, tamaño, nombre), en **vista de cuadrícula o de lista**.
 - Cuenta atrás de borrado en cada archivo.
 - En cada archivo: reproducir, recortar, convertir, descargar, renombrar, compartir el enlace y eliminar.
@@ -123,8 +112,8 @@ Solo lo justo: logo, secciones y tres botones (idioma, opciones y cuenta).
     - Un vinilo en su funda amarilla (como el logo) que sale y gira mientras suena, y el icono de Opciones se convierte en un ecualizador.
     - Anterior, reproducir/pausar, siguiente y barra de progreso.
     - Volumen de la **música** y de los **sonidos** por separado.
-  - ⚙️ **Ajustes**: sonidos sí/no, reducir animaciones y volver a ver la intro.
-  - 📃 **Playlist** (hasta **30 canciones**):
+  - ⚙️ **Ajustes**: sonidos sí/no (con su propio volumen aquí mismo), reducir animaciones y volver a ver la intro.
+  - 📃 **Playlist** (hasta **30 canciones**), con el reproductor (vinilo, progreso y volumen de música) arriba del todo del bloque:
     - **Pega un enlace de YouTube o Spotify**: una canción, una playlist o un álbum. Las canciones aparecen al momento como *Descargando…* y se bajan una a una.
     - Los vídeos largos (**1 h o más**, hasta 4 h) también valen.
     - Spotify no deja descargar su audio, así que se leen el título y el artista de su página pública y la canción se busca en YouTube; si un resultado falla, se prueba el siguiente.
@@ -140,6 +129,7 @@ Solo lo justo: logo, secciones y tres botones (idioma, opciones y cuenta).
   - Barra de fuerza y requisitos en vivo: 10+ caracteres, minúscula, mayúscula, número y símbolo.
   - Aviso de que la contraseña no se puede recuperar.
   - **Foto de perfil opcional**.
+  - **Eliminar cuenta**: borra la cuenta, sus sesiones y todos sus archivos (con confirmación) y te deja como invitado.
 
 En el móvil los menús se abren como una hoja a lo ancho, bajo la barra.
 
@@ -175,10 +165,10 @@ En el móvil los menús se abren como una hoja a lo ancho, bajo la barra.
 - 🌌 **Fondo animado distinto en cada sección, que reacciona al ratón** (o al dedo). No es un brillo que te sigue: las formas se mueven.
   - Van **desenfocados** y reaccionan de forma **sutil**, siguiendo al cursor con inercia, para no distraer del contenido.
   - Al hacer **clic** sale una onda suave que atraviesa la escena.
-  - Descargar: un campo de **flechas de descarga** que bajan despacio y, cerca del cursor, se apartan y crecen.
+  - Descargar: un **monitor de transferencia**: un gráfico de velocidad se desplaza abajo mientras lanza paquetes hacia un mapa de piezas tipo torrent, que se va llenando; el cursor acelera la descarga y decide qué piezas llegan antes.
   - Recortar: una **onda de audio** que crece donde pasas el cursor, con cabezal y corchetes que lo siguen. Cada clic deja una marca de corte.
-  - Convertir: un campo de círculos, cuadrados y triángulos que **flotan y giran solos**, apuntan al cursor y se transforman (círculo ⇄ cuadrado) al acercarte. La onda del clic los **convierte** en la forma siguiente.
-  - Biblioteca: **fichas de archivo** flotando (con los colores de cada tipo) que se levantan bajo el cursor y dejan una estela.
+  - Convertir: un **cuantizador**: tres señales analógicas suaves cruzan la pantalla y se vuelven señales digitales escalonadas en la cabeza de conversión (el cursor); cuanto más arriba, más niveles (más fiel); un clic los reduce de golpe.
+  - Biblioteca: un **plato de disco duro girando**, visto desde arriba, con sectores coloreados como la biblioteca; el cabezal de lectura/escritura sigue al cursor y enciende los sectores que toca, dejando una estela.
 - 🔊 **Sonidos** sintetizados con Web Audio: clic, sección, marca, éxito y error.
 - 🖱️ **Cursores propios**:
   - Una flecha, normal o sobre los botones (esta un poco más grande para que no parezca menor).
@@ -193,19 +183,21 @@ En el móvil los menús se abren como una hoja a lo ancho, bajo la barra.
 Todo el código y los comentarios están **en inglés**. Cada archivo empieza con un comentario que explica qué hace, y cada función tiene el suyo.
 
 ```
-src/                      # Web (Angular 21: standalone, signals, zoneless, SSG)
+src/                      # Web (Angular 22: standalone, signals, zoneless, SSG)
 ├── styles.css            # Design system: colours, type, menus, animations
 └── app/
     ├── app.*             # Intro, header (tabs, language, options, account), sections, footer
     ├── i18n/             # es (source), en
-    ├── core/             # api, store (state), i18n, music (player), sfx (sounds), icon, format
+    ├── core/             # api, store (state), i18n, formats (conversion catalog), music, sfx, icon, format
     ├── shared/           # account and player (dropdowns), scene (canvas backdrops), flag, job-list
     └── features/         # downloader · trimmer · converter · library
 server/                   # API (Node + Express)
 ├── index.mjs             # Start-up and environment variables
 ├── app.mjs               # Routes: accounts, avatars, library, fetch, trim, convert, jobs
 ├── downloader.mjs        # yt-dlp (allowed domains only, quality/format selection)
-├── media.mjs             # FFmpeg: probe, thumbnails, trim, all conversions
+├── media.mjs             # FFmpeg: probe, thumbnails, trim, media and still-image conversions
+├── catalog.mjs           # What each file extension is and what it can become (client mirrors this)
+├── office.mjs            # LibreOffice: document conversions (optional, see Configuración)
 ├── db.mjs                # JSON database (users, sessions, files)
 ├── errors.mjs            # Errors with a code that the web translates
 └── binaries.mjs          # Finds or downloads FFmpeg and yt-dlp
@@ -215,18 +207,22 @@ test/app.test.mjs         # The test
 
 ## 🧪 Test
 
-`test/app.test.mjs` es **un único archivo de test** que prueba todo contra el servidor real:
+`test/app.test.mjs` es **un único archivo de test** (`pnpm test`) que prueba todo contra el servidor real, con FFmpeg y yt-dlp reales:
 
 - 👻 **Invitados**: con biblioteca propia, borrado a las 2 h, y pueden procesar.
 - 🔐 **Cuentas**:
   - Reglas de contraseña.
   - El registro sube el espacio y los 24 h, y conserva lo hecho como invitado.
   - Foto de perfil, inicio de sesión uniendo archivos y cierre de sesión.
+  - **Eliminar cuenta**: borra usuario, sesiones y archivos del disco; un test final comprueba que la base de datos no se queda con ninguna cuenta hecha por el test.
 - 📁 **Archivos**:
   - Subida, miniatura, streaming con `Range` y descarga con nombre propio.
   - Renombrar y compartir.
+  - Los archivos que FFmpeg no reconoce (p. ej. `.txt`) se aceptan como **documento**, no se rechazan.
 - ✂️ **Recortes**: copia directa, reencuadre, volumen y silencio.
-- 🔄 **Conversiones**: MP4, WebM, MKV H.265 cuadrado, AVI, GIF, WebP, MP3, Opus, OGG y FLAC.
+- 🔄 **Conversiones de vídeo/audio/animación**: MP4, WebM, MKV H.265 cuadrado, AVI, GIF, WebP, MP3, Opus, OGG y FLAC.
+- 🖼️ **Imágenes**: subida con miniatura y conversión a JPG, WebP, AVIF, BMP, TIFF, ICO y GIF; sacar un fotograma de un vídeo como imagen; se rechaza convertir una imagen a audio.
+- 📄 **Documentos** (si hay LibreOffice instalado; si no, prueba que el servidor lo dice con `office_missing`): TXT → PDF → DOCX/PPTX, una página de PDF como imagen, CSV → XLSX.
 - 🎵 **Música desde enlaces**:
   - Se reconocen YouTube y Spotify y se leen las páginas de Spotify.
   - Se resuelve y descarga el audio, y se comprueba que no queda nada en el servidor.
@@ -270,6 +266,10 @@ Todo ocurre en carpetas temporales que se borran al terminar. Hay además un tes
 | `MYCONVERSOR_POT_URL` | — | Servidor [bgutil](https://github.com/Brainicism/bgutil-ytdlp-pot-provider) de PO tokens para YouTube (p. ej. `http://bgutil-provider:4416`) |
 | `MYCONVERSOR_PROXY` | — | Proxy para yt-dlp (p. ej. `socks5://127.0.0.1:1080`), si YouTube bloquea la IP del servidor |
 | `MYCONVERSOR_FFMPEG` / `MYCONVERSOR_YTDLP` | auto | Rutas propias a los binarios |
+
+| `MYCONVERSOR_SOFFICE` | auto | Ruta propia a `soffice` (LibreOffice), para las conversiones de documentos |
+
+Sin LibreOffice, las conversiones de documentos se desactivan solas (`/api/health` lo refleja en `tools.office`) y el resto de la app sigue funcionando igual. La imagen Docker ya trae LibreOffice instalado.
 
 🐳 Docker: `docker build -t myconversor . && docker run -p 8000:8000 -v myconversor:/data myconversor`.
 

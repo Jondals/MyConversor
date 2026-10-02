@@ -1,225 +1,229 @@
-<header class="slide mb-6 flex flex-col gap-5 md:mb-8 lg:flex-row lg:items-end lg:justify-between">
-  <div>
-    <p class="label-mark text-yellow">{{ t('conv.module') }}</p>
-    <h1 class="headline mt-3">{{ t('conv.title') }}</h1>
-    <p class="mt-2 max-w-2xl text-muted">{{ t('conv.subtitle') }}</p>
-  </div>
-  <div class="grid grid-cols-3 border border-line bg-raised p-1 lg:w-[30rem]" role="group" [attr.aria-label]="t('conv.type')">
-    @for (c of categories; track c.id) {
-      <button type="button" class="chip border-0!" [attr.aria-pressed]="category() === c.id" (click)="setCategory(c.id)">
-        <app-icon [name]="c.icon" [size]="14" /> {{ t(c.key) }}
-      </button>
-    }
-  </div>
+<header class="slide mb-5 md:mb-6">
+  <p class="label-mark text-yellow">{{ t('conv.module') }}</p>
+  <h1 class="headline mt-3">{{ t('conv.title') }}</h1>
+  <p class="mt-2 max-w-2xl text-muted">{{ t('conv.subtitle') }}</p>
 </header>
 
-<input #picker id="conv-file" type="file" accept="video/*,audio/*" class="sr-only" (change)="pick(picker)" />
+<input #picker id="conv-file" type="file" [accept]="accept" class="sr-only" (change)="pick(picker)" />
 
-@if (source(); as s) {
-  <section class="pane rise flex flex-wrap items-center gap-4 p-4" [attr.aria-label]="t('conv.uploadTitle')">
-    <div class="relative grid h-16 w-28 shrink-0 place-items-center overflow-hidden border border-line bg-base">
-      @if (s.thumb) {
-        <img [src]="s.thumb" alt="" class="size-full object-cover" width="112" height="64" />
-      } @else {
-        <app-icon [name]="s.kind === 'audio' ? 'music' : 'film'" [size]="22" class="text-yellow" />
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
+  <div class="flex min-w-0 flex-col gap-4">
+    <!-- Source (same height with or without a file) -->
+    @if (source(); as s) {
+      <section class="pane rise flex min-h-[84px] items-center gap-4 px-4 py-3" [attr.aria-label]="t('conv.source')">
+        <div class="relative grid h-14 w-24 shrink-0 place-items-center overflow-hidden border border-line bg-base">
+          @if (s.thumb) {
+            <img [src]="s.thumb" alt="" class="size-full object-cover" width="96" height="56" />
+          } @else {
+            <app-icon [name]="kindIcon(s.kind)" [size]="22" class="text-yellow" />
+          }
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-bold">{{ s.name }}<span class="text-dim">.{{ s.ext }}</span></p>
+          <p class="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            <span class="label">{{ t('conv.weight') }} <b class="text-text">{{ bytes(s.size) }}</b></span>
+            @if (s.duration) {
+              <span class="label">{{ t('conv.duration') }} <b class="text-text">{{ dur(s.duration) }}</b></span>
+            }
+            @if (s.width) {
+              <span class="label">{{ t('conv.resolution') }} <b class="text-text">{{ s.width }}×{{ s.height }}</b></span>
+            }
+            <span class="label">{{ t('conv.status') }} <b class="text-blue-text">{{ s.fileId ? t('conv.ready') : t('conv.uploading') }}</b></span>
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <label for="conv-file" class="btn btn-secondary min-h-10 px-3 text-xs md:text-[11px]" [title]="t('conv.changeFile')">
+            <app-icon name="upload" [size]="14" /> <span class="hidden sm:inline">{{ t('conv.changeFile') }}</span>
+          </label>
+          <button type="button" class="btn btn-secondary btn-danger min-h-10 px-3 text-xs md:text-[11px]" [title]="t('common.delete')" (click)="deleteSource()">
+            <app-icon name="trash" [size]="14" /> <span class="hidden sm:inline">{{ t('common.delete') }}</span>
+          </button>
+        </div>
+      </section>
+    } @else {
+      <section class="rise flex flex-col gap-3 sm:min-h-[84px] sm:flex-row" [attr.aria-label]="t('conv.source')">
+        <label
+          for="conv-file"
+          class="pane flex flex-1 items-center gap-4 border-dashed! px-4 py-3 transition-colors hover:border-yellow!"
+          (dragover)="$event.preventDefault()"
+          (drop)="onDrop($event)"
+        >
+          <span class="grid size-11 shrink-0 place-items-center border border-yellow text-yellow">
+            <app-icon name="upload" [size]="18" />
+          </span>
+          <span class="min-w-0">
+            <span class="block font-bold uppercase">{{ t('conv.uploadTitle') }}</span>
+            <span class="block text-sm text-muted">{{ t('conv.uploadText') }}</span>
+          </span>
+        </label>
+        <div class="pane flex flex-col justify-center gap-1.5 px-3 py-3 sm:w-64">
+          <label for="conv-lib" class="label">{{ t('common.fromLibrary') }}</label>
+          <select
+            id="conv-lib"
+            class="field min-h-9 text-sm"
+            [disabled]="!libraryFiles().length"
+            (change)="openFile($any($event.target).value); $any($event.target).value = ''"
+          >
+            <option value="" selected>{{ libraryFiles().length ? t('conv.libraryPick') : t('common.libraryEmpty') }}</option>
+            @for (f of libraryFiles(); track f.id) {
+              <option [value]="f.id">{{ f.name }}.{{ f.ext }}</option>
+            }
+          </select>
+        </div>
+      </section>
+    }
+
+    <!-- Output groups: the ones this file can't become are disabled -->
+    <div class="rise grid grid-cols-5 border border-line bg-raised p-1" role="tablist" [attr.aria-label]="t('conv.type')" style="--d: 40ms">
+      @for (g of groups; track g.id) {
+        <button
+          type="button"
+          role="tab"
+          class="chip border-0! px-1 sm:px-3"
+          [attr.aria-selected]="group() === g.id"
+          [disabled]="!enabled(g.id)"
+          [title]="enabled(g.id) ? t($any('conv.g.' + g.id)) : t('conv.notFor')"
+          (click)="setGroup(g.id)"
+        >
+          <app-icon [name]="g.icon" [size]="14" />
+          <span class="sr-only sm:not-sr-only">{{ t($any('conv.g.' + g.id)) }}</span>
+        </button>
       }
     </div>
-    <div class="min-w-0 flex-1">
-      <p class="truncate font-bold">{{ s.name }}<span class="text-dim">.{{ s.ext }}</span></p>
-      <p class="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-        <span class="label">{{ t('conv.weight') }} <b class="text-text">{{ bytes(s.size) }}</b></span>
-        @if (s.duration) {
-          <span class="label">{{ t('conv.duration') }} <b class="text-text">{{ dur(s.duration) }}</b></span>
-        }
-        @if (s.width) {
-          <span class="label">{{ t('conv.resolution') }} <b class="text-text">{{ s.width }}×{{ s.height }}</b></span>
-        }
-        <span class="label">{{ t('conv.status') }} <b class="text-blue-text">{{ s.fileId ? t('conv.ready') : t('conv.uploading') }}</b></span>
-      </p>
-    </div>
-    <div class="flex gap-2">
-      <label for="conv-file" class="btn btn-secondary min-h-10 text-xs md:text-[11px]">
-        <app-icon name="upload" [size]="14" /> {{ t('conv.changeFile') }}
-      </label>
-      <button type="button" class="btn btn-secondary btn-danger min-h-10 text-xs md:text-[11px]" (click)="deleteSource()">
-        <app-icon name="trash" [size]="14" /> {{ t('common.delete') }}
-      </button>
-    </div>
-  </section>
-} @else {
-  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
-    <label
-      for="conv-file"
-      class="pane rise flex items-center gap-4 border-dashed! p-6 transition-colors hover:border-yellow!"
-      (dragover)="$event.preventDefault()"
-      (drop)="onDrop($event)"
-    >
-      <span class="grid size-12 shrink-0 place-items-center border border-yellow text-yellow">
-        <app-icon name="upload" [size]="20" />
-      </span>
-      <span>
-        <span class="block font-bold uppercase">{{ t('conv.uploadTitle') }}</span>
-        <span class="text-sm text-muted">{{ t('conv.uploadText') }}</span>
-      </span>
-    </label>
-    <section class="pane rise" style="--d: 60ms" aria-labelledby="conv-lib">
-      <h2 id="conv-lib" class="pane-head label-mark text-text">{{ t('common.fromLibrary') }}</h2>
-      <ul class="max-h-56 overflow-auto">
-        @for (f of libraryMedia(); track f.id) {
-          <li>
-            <button type="button" class="hover-rail flex w-full items-center gap-3 border-b border-line-soft px-4 py-2.5 text-left" (click)="openFile(f)">
-              <app-icon [name]="f.kind === 'audio' ? 'music' : 'film'" [size]="14" class="text-yellow" />
-              <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ f.name }}</span>
-              <span class="label">{{ f.ext }}</span>
-            </button>
-          </li>
-        } @empty {
-          <li class="p-5 text-sm text-muted">{{ t('common.libraryEmpty') }}</li>
-        }
-      </ul>
-    </section>
-  </div>
-}
 
-<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-  <div class="flex min-w-0 flex-col gap-6">
-    <section class="rise" style="--d: 40ms" aria-labelledby="fmt-title">
-      <h2 id="fmt-title" class="label-mark mb-3 text-text">{{ t('conv.formats') }}</h2>
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        @for (f of formats(); track f.id) {
+    <!-- Formats: always three rows tall on desktop, so switching tabs doesn't move anything -->
+    <section class="rise" aria-labelledby="fmt-title" style="--d: 80ms">
+      <h2 id="fmt-title" class="sr-only">{{ t('conv.formats') }}</h2>
+      <div class="grid auto-rows-[76px] grid-cols-2 content-start gap-2.5 sm:grid-cols-4 lg:min-h-[248px]">
+        @for (f of formats(); track group() + f.id) {
           <button
             type="button"
-            class="pane lift relative p-4 text-left"
-            [class.border-yellow!]="formatId() === f.id"
-            [attr.aria-pressed]="formatId() === f.id"
+            class="pane lift flex min-w-0 flex-col justify-center px-3.5 text-left"
+            [class.border-yellow!]="format().id === f.id"
+            [attr.aria-pressed]="format().id === f.id"
             (click)="selectFormat(f.id)"
           >
             <span class="flex items-center gap-2">
-              <span class="text-2xl font-bold">{{ f.label }}</span>
+              <span class="text-lg leading-none font-bold">{{ f.label }}</span>
               @if (f.recommended) {
-                <span class="bg-yellow px-1.5 py-0.5 text-xs font-bold tracking-[0.08em] text-ink uppercase md:text-[10px]">{{ t('common.recommended') }}</span>
+                <span class="bg-yellow px-1 py-0.5 text-[9px] leading-none font-bold tracking-[0.08em] text-ink uppercase">{{ t('common.recommended') }}</span>
               }
-              @if (formatId() === f.id) {
-                <span class="ml-auto grid size-5 place-items-center bg-yellow text-ink"><app-icon name="check" [size]="12" [stroke]="3" /></span>
+              @if (format().id === f.id) {
+                <span class="ml-auto grid size-5 shrink-0 place-items-center bg-yellow text-ink"><app-icon name="check" [size]="12" [stroke]="3" /></span>
               }
             </span>
-            <span class="mt-2 block text-sm text-muted">{{ t($any('fmt.' + f.id)) }}</span>
+            <span class="mt-1.5 truncate text-xs text-muted">{{ t($any(desc(f.id))) }}</span>
           </button>
         }
       </div>
     </section>
-
-    @if (category() !== 'audio') {
-      <section class="rise" style="--d: 80ms" aria-labelledby="preset-title">
-        <h2 id="preset-title" class="label-mark mb-3 text-text">{{ t('conv.presets') }}</h2>
-        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-          @for (p of presets; track p.id) {
-            <button
-              type="button"
-              class="pane lift relative flex min-h-28 flex-col p-3 text-left"
-              [class.border-yellow!]="presetId() === p.id"
-              [attr.aria-pressed]="presetId() === p.id"
-              (click)="presetId.set(p.id)"
-            >
-              <span class="flex items-start justify-between">
-                <app-icon [name]="p.icon" [size]="18" [class]="presetId() === p.id ? 'text-yellow' : 'text-muted'" />
-                <span class="tag px-1.5! py-0.5!" [class]="presetId() === p.id ? 'border-yellow! bg-yellow text-ink!' : ''">{{ p.tag }}</span>
-              </span>
-              <span class="mt-auto text-sm font-bold uppercase">{{ t($any('preset.' + p.id)) }}</span>
-              <span class="text-xs text-muted">{{ t($any('preset.' + p.id + 'Note')) }}</span>
-            </button>
-          }
-        </div>
-      </section>
-    }
   </div>
 
-  <aside class="flex h-fit flex-col gap-6 lg:sticky lg:top-24">
-    <section class="pane rise" style="--d: 120ms" aria-labelledby="settings-title">
-      <h2 id="settings-title" class="pane-head label-mark text-text">{{ t('conv.params') }}</h2>
-      <div class="flex flex-col gap-5 p-4">
+  <!-- Forecast on top, settings below; the same controls for every group (unused ones are disabled) -->
+  <aside class="rise h-fit lg:sticky lg:top-24" style="--d: 120ms">
+    <section class="pane" aria-labelledby="forecast-title">
+      <h2 id="forecast-title" class="sr-only">{{ t('conv.forecast') }}</h2>
+      <div class="grid grid-cols-3 border-b border-line bg-base/60">
+        <div class="min-w-0 border-r border-line-soft p-3.5">
+          <p class="label truncate">{{ t('conv.estimate') }}</p>
+          <p class="mt-1 truncate text-xl font-bold text-yellow tabular-nums">{{ estimate() ? bytes(estimate()) : '—' }}</p>
+          <p class="h-4 text-xs font-bold" [class]="delta() < 0 ? 'text-blue-text' : 'text-red-text'">{{ delta() ? (delta() > 0 ? '+' : '') + delta() + ' %' : '' }}</p>
+        </div>
+        <div class="min-w-0 border-r border-line-soft p-3.5">
+          <p class="label truncate">{{ t('conv.time') }}</p>
+          <p class="mt-1 truncate text-xl font-bold tabular-nums">{{ timeEstimate() }}</p>
+          <p class="h-4"></p>
+        </div>
+        <div class="min-w-0 p-3.5">
+          <p class="label truncate">{{ t('conv.output') }}</p>
+          <p class="mt-1 truncate text-xl font-bold">{{ format().label }}</p>
+          <p class="h-4 truncate text-xs text-muted tabular-nums">{{ outLabel() }}</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3.5 p-4">
         <div>
-          <label for="conv-name" class="label mb-2 block">{{ t('dl.fileName') }}</label>
+          <label for="conv-name" class="label mb-1.5 block">{{ t('dl.fileName') }}</label>
           <div class="relative">
             <input id="conv-name" class="field pr-16" maxlength="120" [value]="fileName()" (input)="fileName.set($any($event.target).value)" />
             <span class="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-dim">.{{ format().ext }}</span>
           </div>
         </div>
 
-        @if (format().codecs.length) {
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label for="codec" class="label mb-2 block">{{ t('conv.codec') }}</label>
-            <select id="codec" class="field" (change)="codec.set($any($event.target).value)">
-              @for (c of format().codecs; track c) {
-                <option [value]="c" [selected]="c === codec()">{{ codecLabels[c] }} · {{ t($any('codec.' + c)) }}</option>
+            <label for="codec" class="label mb-1.5 block">{{ t('conv.codec') }}</label>
+            <select id="codec" class="field" [disabled]="!usesCodec() || (format().codecs?.length ?? 0) < 2" (change)="codec.set($any($event.target).value)">
+              @if (usesCodec()) {
+                @for (c of format().codecs ?? []; track c) {
+                  <option [value]="c" [selected]="c === codec()">{{ codecLabels[c] }}</option>
+                }
+              } @else {
+                <option>—</option>
               }
             </select>
           </div>
-        }
-        @if (category() !== 'audio') {
-          <fieldset>
-            <legend class="label mb-2">{{ t('conv.quality') }}</legend>
-            <div class="grid grid-cols-3">
-              @for (q of qualities; track q.id; let first = $first) {
-                <button type="button" class="chip" [class.-ml-px]="!first" [attr.aria-pressed]="qualityId() === q.id" (click)="qualityId.set(q.id)">
-                  {{ t(q.key) }}
-                </button>
-              }
-            </div>
-          </fieldset>
-        }
-
-        @if (category() === 'animation') {
           <div>
-            <label for="fps" class="label mb-2 block">{{ t('conv.fps') }}</label>
-            <select id="fps" class="field" (change)="gifFps.set(+$any($event.target).value)">
-              @for (f of [10, 15, 24]; track f) {
-                <option [value]="f" [selected]="gifFps() === f">{{ t($any('fps.' + f)) }}</option>
+            <label for="quality" class="label mb-1.5 block">{{ t('conv.quality') }}</label>
+            <select id="quality" class="field" [disabled]="!usesQuality()" (change)="qualityId.set($any($event.target).value)">
+              @if (usesQuality()) {
+                @for (q of qualities; track q.id) {
+                  <option [value]="q.id" [selected]="qualityId() === q.id">{{ t($any('conv.q.' + q.id)) }}</option>
+                }
+              } @else {
+                <option>{{ format().lossless || group() === 'document' ? t('conv.lossless') : '—' }}</option>
               }
             </select>
           </div>
-        } @else if (!format().lossless) {
-          <fieldset>
-            <legend class="label mb-2">{{ t('conv.bitrate') }}</legend>
-            <div class="grid grid-cols-4">
-              @for (k of [128, 192, 256, 320]; track k; let first = $first) {
-                <button type="button" class="chip px-1" [class.-ml-px]="!first" [attr.aria-pressed]="audioKbps() === k" (click)="audioKbps.set(k)">
-                  {{ k }}k
-                </button>
-              }
-            </div>
-          </fieldset>
-        } @else {
-          <p class="border-l-2 border-blue bg-base p-3 text-sm text-muted">{{ t('conv.losslessNote', { format: format().label }) }}</p>
-        }
-
-        <button type="button" class="btn btn-primary min-h-14 w-full text-sm" [disabled]="!source()" (click)="convert()">
-          <app-icon name="zap" [size]="16" /> {{ t('conv.start', { format: format().label }) }}
-        </button>
-      </div>
-    </section>
-
-    <section class="pane rise" style="--d: 160ms" aria-labelledby="forecast-title">
-      <h2 id="forecast-title" class="pane-head label-mark text-text">{{ t('conv.forecast') }}</h2>
-      <div class="grid grid-cols-2 gap-3 p-4">
-        <div class="border border-line bg-base p-3">
-          <p class="label">{{ t('conv.estimate') }}</p>
-          <p class="mt-1 text-2xl font-bold text-yellow">{{ source()?.duration ? bytes(estimate()) : '—' }}</p>
-          @if (delta()) {
-            <p class="text-xs font-bold" [class]="delta() < 0 ? 'text-blue-text' : 'text-red-text'">{{ delta() > 0 ? '+' : '' }}{{ delta() }}%</p>
-          }
         </div>
-        <div class="border border-line bg-base p-3">
-          <p class="label">{{ t('conv.time') }}</p>
-          <p class="mt-1 text-2xl font-bold">{{ timeEstimate() }}</p>
-          <p class="text-xs text-muted">
-            @if (category() === 'video') {
-              {{ outSize().width }}×{{ outSize().height }}
-            } @else {
-              {{ format().label }}
+
+        <fieldset [disabled]="!usesProfile()">
+          <legend class="label mb-1.5">{{ t('conv.presets') }}</legend>
+          <div class="grid grid-cols-4 gap-1.5">
+            @for (p of presets; track p.id) {
+              <button
+                type="button"
+                class="chip min-h-9 px-1"
+                [attr.aria-pressed]="usesProfile() && presetId() === p.id"
+                [title]="t($any('preset.' + p.id)) + ' · ' + t($any('preset.' + p.id + 'Note'))"
+                (click)="presetId.set(p.id)"
+              >
+                {{ p.id === 'original' ? t('preset.original') : p.id === 'discord' ? t('preset.discord') : p.tag }}
+              </button>
             }
-          </p>
+          </div>
+        </fieldset>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="bitrate" class="label mb-1.5 block">{{ t('conv.bitrate') }}</label>
+            <select id="bitrate" class="field" [disabled]="!usesBitrate()" (change)="audioKbps.set(+$any($event.target).value)">
+              @if (usesBitrate()) {
+                @for (k of [128, 192, 256, 320]; track k) {
+                  <option [value]="k" [selected]="audioKbps() === k">{{ k }} kbps</option>
+                }
+              } @else {
+                <option>{{ group() === 'audio' ? t('conv.lossless') : '—' }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="fps" class="label mb-1.5 block">{{ t('conv.fps') }}</label>
+            <select id="fps" class="field" [disabled]="group() !== 'animation'" (change)="gifFps.set(+$any($event.target).value)">
+              @if (group() === 'animation') {
+                @for (f of [10, 15, 24]; track f) {
+                  <option [value]="f" [selected]="gifFps() === f">{{ t($any('fps.' + f)) }}</option>
+                }
+              } @else {
+                <option>—</option>
+              }
+            </select>
+          </div>
         </div>
+
+        <button type="button" class="btn btn-primary mt-1 min-h-13 w-full text-sm" [disabled]="!source() || blocked()" (click)="convert()">
+          <app-icon name="zap" [size]="16" /> {{ blocked() ? t('conv.noOffice') : t('conv.start', { format: format().label }) }}
+        </button>
       </div>
     </section>
   </aside>

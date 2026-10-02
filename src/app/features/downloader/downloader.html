@@ -236,7 +236,7 @@
             </div>
             <p class="label mt-1">{{ bytes(f.size) }} · {{ ago(f.createdAt) }}</p>
             <div class="mt-2 grid grid-cols-2 gap-2">
-              @if (f.kind !== 'gif') {
+              @if (f.kind === 'video' || f.kind === 'audio') {
                 <button type="button" class="btn btn-secondary min-h-8 text-xs md:text-[11px]" (click)="store.open('trim', toSource(f))">
                   <app-icon name="scissors" [size]="12" /> {{ t('common.trim') }}
                 </button>

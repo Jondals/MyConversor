@@ -1,5 +1,6 @@
 // MyConversor HTTP app (Express): accounts, the per-user library, downloads with
-// yt-dlp, trimming/conversion with FFmpeg, and the built web app.
+// yt-dlp, trimming/conversion with FFmpeg (media and images) and LibreOffice
+// (documents), and the built web app.
 //
 // Storage: every file lives on the server's own disk under `<dataDir>/files/<id>/`
 // and its metadata in `<dataDir>/db.json`. Deleting a file from the library
@@ -10,19 +11,18 @@ import { basename, extname, join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import compression from 'compression';
 import express from 'express';
+import { GROUPS, kindOf, needsOffice, targetsFor } from './catalog.mjs';
 import { Db, newId } from './db.mjs';
 import { AUDIO_FORMATS, VIDEO_CONTAINERS, download, getInfo, platformFor } from './downloader.mjs';
 import { AppError } from './errors.mjs';
-import { FORMATS, PRESETS, convertArgs, probe, run, strip, thumbnail, trimArgs } from './media.mjs';
+import { PRESETS, convertArgs, probe, run, stillArgs, strip, thumbnail, trimArgs } from './media.mjs';
 import { downloadMusic, resolveMusic } from './music.mjs';
+import { createOffice } from './office.mjs';
 
 const COOKIE = 'mc_session';
-const AUDIO_EXTS = new Set(['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'ac3', 'aiff', 'alac']);
-const IMAGE_EXTS = new Set(['gif', 'webp', 'png']);
 const HOUR = 3600_000;
-
-/** Media kind from a file extension. */
-export const kindOf = (ext) => (IMAGE_EXTS.has(ext) ? 'gif' : AUDIO_EXTS.has(ext) ? 'audio' : 'video');
+/** Media info stored for documents. */
+const EMPTY_INFO = { duration: 0, width: 0, height: 0, hasVideo: false, hasAudio: false };
 
 /** Makes a user/platform supplied title safe to use as a file name. */
 export function cleanName(name, fallback = 'video') {
@@ -64,7 +64,7 @@ const AUDIO_TYPES = { m4a: 'audio/mp4', mp4: 'audio/mp4', webm: 'audio/webm', op
 /**
  * Creates the app.
  * @param {{
- *   dataDir: string, bins: {ffmpeg: string, ytdlp: string}, webDir?: string,
+ *   dataDir: string, bins: {ffmpeg: string, ytdlp: string, office?: string|null}, webDir?: string,
  *   ttlMs?: number, guestTtlMs?: number, quotaBytes?: number, guestQuotaBytes?: number,
  *   maxJobs?: number, cookies?: string, extraHosts?: string[], log?: (msg: string) => void
  * }} options
@@ -91,6 +91,8 @@ export function createApp(options) {
   mkdirSync(filesDir, { recursive: true });
   mkdirSync(avatarsDir, { recursive: true });
   const db = new Db(dataDir);
+  // LibreOffice runs with its own profile under the data folder (optional).
+  const office = bins.office ? createOffice(bins.office, join(dataDir, 'office-profile')) : null;
   const jobs = new Map();
   const queue = [];
   let running = 0;
@@ -146,7 +148,9 @@ export function createApp(options) {
 
   /** Probes a finished file, makes its thumbnail and registers it. */
   async function storeFile(userId, path, name, origin, extra = {}) {
-    const info = await probe(bins.ffmpeg, path);
+    const ext = extname(path).slice(1).toLowerCase();
+    // Documents are never probed: FFmpeg would read a .txt as ANSI art "video".
+    const info = kindOf(ext) === 'document' ? EMPTY_INFO : await probe(bins.ffmpeg, path);
     const id = basename(resolve(path, '..'));
     let thumb = false;
     if (info.hasVideo) {
@@ -162,7 +166,7 @@ export function createApp(options) {
       userId,
       path,
       name: cleanName(name),
-      ext: extname(path).slice(1).toLowerCase(),
+      ext,
       size: statSync(path).size,
       duration: info.duration,
       width: info.width,
@@ -314,7 +318,7 @@ export function createApp(options) {
 
   // Real status: the server answers and both tools are present on disk.
   api.get('/health', (req, res) => {
-    const tools = { ffmpeg: existsSync(bins.ffmpeg), ytdlp: existsSync(bins.ytdlp) };
+    const tools = { ffmpeg: existsSync(bins.ffmpeg), ytdlp: existsSync(bins.ytdlp), office: Boolean(office) };
     res.json({ ok: tools.ffmpeg && tools.ytdlp, tools });
   });
   api.get('/me', (req, res) => res.json(me(req.user)));
@@ -367,6 +371,19 @@ export function createApp(options) {
 
   api.post('/auth/logout', (req, res) => {
     db.dropSession(req.token);
+    const guest = db.createGuest();
+    startSession(req, res, guest.id);
+    res.json(me(guest));
+  });
+
+  // Deletes the account (or guest) with all its files, photo and sessions, then
+  // starts a fresh guest session.
+  api.delete('/me', (req, res) => {
+    const user = req.user;
+    for (const j of jobs.values()) if (j.userId === user.id) j.controller.abort();
+    for (const f of db.filesOf(user.id)) deleteFile(f);
+    rmSync(join(avatarsDir, user.id), { force: true });
+    db.deleteUser(user.id);
     const guest = db.createGuest();
     startSession(req, res, guest.id);
     res.json(me(guest));
@@ -434,10 +451,11 @@ export function createApp(options) {
       rmSync(dir, { recursive: true, force: true });
       throw err instanceof AppError ? err : new AppError(400, 'upload_interrupted', 'Upload interrupted');
     }
-    const info = await probe(bins.ffmpeg, target);
-    if (!info.hasVideo && !info.hasAudio) {
+    // Media and images must be readable by FFmpeg; documents are kept as they are.
+    const info = kindOf(ext) === 'document' ? null : await probe(bins.ffmpeg, target);
+    if (info && !info.hasVideo && !info.hasAudio) {
       rmSync(dir, { recursive: true, force: true });
-      throw new AppError(415, 'not_media', 'Not a supported video or audio file');
+      throw new AppError(415, 'not_media', 'Not a supported video, audio, image or document');
     }
     const name = raw.slice(0, raw.length - extname(raw).length) || 'file';
     res.json(publicFile(await storeFile(req.user.id, target, name, 'upload')));
@@ -597,34 +615,53 @@ export function createApp(options) {
     res.json(publicJob(job));
   });
 
+  // `group` picks the kind of output (video, animation, audio, image, document);
+  // clients that only send `format` get a media output.
   api.post('/files/:id/convert', (req, res) => {
     const src = ownFile(req);
     const b = req.body ?? {};
-    if (!FORMATS.includes(b.format)) throw new AppError(400, 'bad_format', 'Unsupported format');
+    const targets = targetsFor(src.ext);
+    const group = GROUPS.includes(b.group) ? b.group : ['video', 'animation', 'audio'].find((g) => targets[g]?.includes(b.format));
+    if (!group || !targets[group]?.includes(b.format)) {
+      throw new AppError(400, 'bad_format', `A .${src.ext} file cannot become ${b.format}`);
+    }
+    if (needsOffice(src.ext, group) && !office) throw new AppError(503, 'office_missing', 'Document conversion is not installed on this server');
     const name = cleanName(b.name, src.name);
+    const o = {
+      format: b.format,
+      codec: b.codec,
+      preset: b.preset in PRESETS ? b.preset : 'original',
+      quality: b.quality,
+      audioKbps: num(b.audioKbps, 192),
+      gifFps: num(b.gifFps, 15),
+    };
     const job = submit(req.user.id, 'convert', name, async (job, signal) => {
       job.stage = 'converting';
+      if (needsOffice(src.ext, group)) {
+        return produce(job, name, 'convert', src, (dir) => office.convert(src.path, src.ext, b.format, dir, signal));
+      }
       const info = await probe(bins.ffmpeg, src.path);
-      const { args, ext } = convertArgs(src.path, info, {
-        format: b.format,
-        codec: b.codec,
-        preset: b.preset in PRESETS ? b.preset : 'original',
-        quality: b.quality,
-        audioKbps: num(b.audioKbps, 192),
-        gifFps: num(b.gifFps, 15),
-      });
-      return encode(job, signal, args, ext, info.duration, name, 'convert', src);
+      const { args, ext } = group === 'image' ? stillArgs(src.path, info, o) : convertArgs(src.path, info, o);
+      return encode(job, signal, args, ext, group === 'image' ? 0 : info.duration, name, 'convert', src);
     });
     res.json(publicJob(job));
   });
 
   /** Runs FFmpeg into a new folder and registers the result. */
-  async function encode(job, signal, args, ext, duration, name, origin, src) {
+  function encode(job, signal, args, ext, duration, name, origin, src) {
+    return produce(job, name, origin, src, async (dir) => {
+      const out = join(dir, `output.${ext}`);
+      await run(bins.ffmpeg, args, out, { duration, signal, onProgress: (p) => (job.progress = p) });
+      return out;
+    });
+  }
+
+  /** Lets `make(dir)` write the result into a new folder, checks the quota and registers it. */
+  async function produce(job, name, origin, src, make) {
     if (freeSpace(job.userId) <= 0) throw new AppError(413, 'library_full', 'Your storage is full');
     const { dir } = newFolder();
-    const out = join(dir, `output.${ext}`);
     try {
-      await run(bins.ffmpeg, args, out, { duration, signal, onProgress: (p) => (job.progress = p) });
+      const out = await make(dir);
       if (statSync(out).size > freeSpace(job.userId)) throw new AppError(413, 'no_space', 'The result does not fit');
       return await storeFile(job.userId, out, name, origin, { platform: src.platform ?? null });
     } catch (err) {

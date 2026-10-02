@@ -1,6 +1,6 @@
 {
   "name": "myconversor",
-  "version": "2.4.2",
+  "version": "3.0.0",
   "scripts": {
     "start": "node scripts/dev.mjs",
     "build": "ng build && node scripts/optimize-html.mjs",
@@ -10,41 +10,38 @@
     "ng": "ng"
   },
   "private": true,
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@12.8.1",
   "dependencies": {
-    "@angular/common": "^21.2.24",
-    "@angular/compiler": "^21.2.24",
-    "@angular/core": "^21.2.24",
-    "@angular/platform-browser": "^21.2.24",
-    "@angular/platform-server": "^21.2.24",
-    "@angular/ssr": "^21.2.24",
-    "compression": "^1.8.0",
-    "express": "^5.1.0",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "@angular/common": "^22.2.1",
+    "@angular/compiler": "^22.2.1",
+    "@angular/core": "^22.2.1",
+    "@angular/platform-browser": "^22.2.1",
+    "@angular/platform-server": "^22.2.1",
+    "@angular/ssr": "^22.2.0",
+    "compression": "^1.8.2",
+    "express": "^5.2.1",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.24",
-    "@angular/cli": "^21.2.24",
-    "@angular/compiler-cli": "^21.2.24",
+    "@angular/build": "^22.2.0",
+    "@angular/cli": "^22.2.0",
+    "@angular/compiler-cli": "^22.2.1",
     "@tailwindcss/postcss": "^4.3.3",
     "postcss": "^8.5.28",
-    "prettier": "^3.8.1",
+    "prettier": "^3.9.9",
     "tailwindcss": "^4.3.3",
-    "typescript": "~5.9.2"
+    "typescript": "~6.0.0"
   },
   "description": "Download, trim and convert video and audio with yt-dlp and FFmpeg.",
   "engines": {
-    "node": ">=20.19"
+    "node": "^22.22.3 || ^24.15.0 || >=26"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ],
-    "ignoredBuiltDependencies": [
-      "@parcel/watcher",
-      "lmdb",
-      "msgpackr-extract"
-    ]
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.15.0",
+      "onFail": "download"
+    }
   }
 }

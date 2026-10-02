@@ -1,4 +1,4 @@
-<div class="menu right-0 w-[min(92vw,360px)] overflow-hidden" role="dialog" [attr.aria-label]="t('header.account')">
+<div class="menu right-0 max-h-[calc(100dvh-5rem)] w-[min(92vw,360px)] overflow-auto" role="dialog" [attr.aria-label]="t('header.account')">
   @if (store.me(); as me) {
     <!-- Identity band (both states): Bauhaus stripe, avatar, name and storage. -->
     <div class="relative border-b border-line bg-base px-5 pt-6 pb-5">
@@ -61,9 +61,12 @@
           </button>
         }
       </nav>
-      <div class="border-t border-line p-3">
-        <button type="button" class="btn btn-secondary btn-danger w-full" (click)="logout()">
-          <app-icon name="logout" [size]="16" /> {{ t('account.logout') }}
+      <div class="grid grid-cols-2 gap-2 border-t border-line p-3">
+        <button type="button" class="btn btn-secondary min-h-10 text-xs" (click)="logout()">
+          <app-icon name="logout" [size]="14" /> {{ t('account.logout') }}
+        </button>
+        <button type="button" class="btn btn-secondary btn-danger min-h-10 text-xs" (click)="deleteAccount()">
+          <app-icon name="trash" [size]="14" /> {{ t('account.delete') }}
         </button>
       </div>
     } @else {

@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ensureBinaries } from './binaries.mjs';
 import { createApp } from './app.mjs';
+import { findOffice } from './office.mjs';
 
 const root = resolve(fileURLToPath(import.meta.url), '../..');
 const env = process.env;
@@ -14,6 +15,9 @@ const bins = await ensureBinaries({
   dir: join(root, '.bin'),
   log: (m) => console.log(`[MyConversor] ${m}`),
 });
+// LibreOffice is optional: without it the document conversions are switched off.
+bins.office = findOffice();
+console.log(`[MyConversor] LibreOffice: ${bins.office ?? 'not found (document conversion disabled)'}`);
 // Extra yt-dlp flags for servers whose IP YouTube treats as a bot (cloud hosts):
 // a PO token provider (bgutil HTTP server) and/or a proxy.
 bins.ytdlpArgs = [];

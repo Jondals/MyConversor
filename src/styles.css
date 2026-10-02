@@ -209,11 +209,14 @@
       border-color 0.1s ease-out,
       transform 0.12s var(--ease-snap);
   }
-  .chip:hover {
+  .chip:hover:not(:disabled) {
     @apply border-dim text-text;
   }
-  .chip:active {
+  .chip:active:not(:disabled) {
     transform: scale(0.97);
+  }
+  .chip:disabled {
+    @apply opacity-35;
   }
   .chip[aria-pressed='true'],
   .chip[aria-selected='true'] {
@@ -231,6 +234,9 @@
     -webkit-text-fill-color: var(--color-text);
     caret-color: var(--color-yellow);
     box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+  }
+  .field:disabled {
+    @apply opacity-45;
   }
   .field::placeholder {
     -webkit-text-fill-color: var(--color-dim);

@@ -1,64 +1,54 @@
-<header class="slide mb-6 md:mb-8">
+<header class="slide mb-5 md:mb-6">
   <p class="label-mark text-yellow">{{ t('lib.module') }}</p>
   <h1 class="headline mt-3">{{ t('lib.title') }}</h1>
   <p class="mt-2 max-w-2xl text-muted">{{ t('lib.subtitle', { hours: store.me()?.ttlHours ?? 24 }) }}</p>
 </header>
 
-@if (store.guest()) {
-  <section class="pane rise mb-6 flex flex-col gap-4 border-l-2 border-l-blue! p-4 md:flex-row md:items-center md:p-5">
-    <div class="min-w-0 flex-1">
-      <p class="label-mark text-text">{{ t('lib.lockedTitle') }}</p>
-      <p class="mt-2 text-sm text-muted">{{ t('lib.lockedText', { quota: bytes(store.quota()), hours: store.me()?.ttlHours ?? 2 }) }}</p>
-      <ul class="mt-3 flex flex-wrap gap-2">
-        @for (perk of [{ icon: 'drive', text: t('lib.perk1', { quota: bytes(store.me()?.accountQuota ?? 0) }) }, { icon: 'clock', text: t('lib.perk2', { hours: store.me()?.accountTtlHours ?? 24 }) }, { icon: 'user', text: t('lib.perk3') }]; track perk.icon) {
-          <li class="tag py-1.5! text-text!">
-            <app-icon [name]="$any(perk.icon)" [size]="13" class="text-yellow" /> {{ perk.text }}
-          </li>
-        }
-      </ul>
-    </div>
-    <button type="button" class="btn btn-primary min-h-12 shrink-0 px-6" data-menu (click)="store.toggleMenu('account')">
-      <app-icon name="user" [size]="16" /> {{ t('common.createAccount') }}
-    </button>
-  </section>
-}
-<section class="pane rise p-4 md:p-6" aria-labelledby="storage-title">
-  <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
-    <div>
+<!-- Storage and, for guests, the invitation to sign up: one compact block -->
+<section class="pane rise flex flex-col gap-4 p-4 md:p-5 lg:flex-row lg:items-center lg:gap-6" aria-labelledby="storage-title">
+  <div class="min-w-0 flex-1">
+    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <p id="storage-title" class="label">{{ t('lib.storage') }}</p>
-      <p class="mt-1 text-3xl font-bold md:text-4xl">
+      <p class="text-2xl font-bold">
         {{ bytes(store.used()) }}
-        <span class="text-[1rem] font-medium text-muted">{{ t('lib.usedOf') }} {{ bytes(store.quota()) }}</span>
+        <span class="text-sm font-medium text-muted">{{ t('lib.usedOf') }} {{ bytes(store.quota()) }}</span>
       </p>
+      <span class="tag">{{ t('lib.percent', { n: ((store.used() / store.quota()) * 100).toFixed(2) }) }}</span>
     </div>
-    <span class="tag mb-1">{{ t('lib.percent', { n: ((store.used() / store.quota()) * 100).toFixed(2) }) }}</span>
-  </div>
-
-  <div class="mt-5 flex h-2 gap-0.5 bg-line-soft" role="img" [attr.aria-label]="t('header.storage') + ': ' + bytes(store.used())">
-    @for (u of usage(); track u.origin) {
-      @if (u.bytes) {
-        <span class="h-full min-w-1 transition-[width] duration-500" [style.width.%]="u.pct" [style.background]="origin[u.origin].color"></span>
+    <div class="mt-3 flex h-2 gap-0.5 bg-line-soft" role="img" [attr.aria-label]="t('header.storage') + ': ' + bytes(store.used())">
+      @for (u of usage(); track u.origin) {
+        @if (u.bytes) {
+          <span class="h-full min-w-1 transition-[width] duration-500" [style.width.%]="u.pct" [style.background]="origin[u.origin].color"></span>
+        }
       }
-    }
-  </div>
-
-  <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-    @for (u of usage(); track u.origin) {
-      <p class="flex items-center gap-2 border border-line-soft bg-base px-3 py-2">
-        <span class="size-2 shrink-0" [style.background]="origin[u.origin].color"></span>
-        <span class="label min-w-0 truncate">{{ t(origin[u.origin].key) }}</span>
-        <b class="ml-auto text-xs whitespace-nowrap">{{ bytes(u.bytes) }}</b>
-      </p>
-    }
-    <p class="col-span-2 flex items-center gap-2 border border-line-soft bg-base px-3 py-2 sm:col-span-1">
-      <span class="size-2 shrink-0 bg-line"></span>
-      <span class="label">{{ t('lib.free') }}</span>
-      <b class="ml-auto text-xs whitespace-nowrap text-yellow">{{ bytes(free()) }}</b>
+    </div>
+    <p class="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+      @for (u of usage(); track u.origin) {
+        <span class="label flex items-center gap-1.5">
+          <span class="size-2 shrink-0" [style.background]="origin[u.origin].color"></span>
+          {{ t(origin[u.origin].key) }} <b class="text-text">{{ bytes(u.bytes) }}</b>
+        </span>
+      }
+      <span class="label flex items-center gap-1.5">
+        <span class="size-2 shrink-0 bg-line"></span>
+        {{ t('lib.free') }} <b class="text-yellow">{{ bytes(free()) }}</b>
+      </span>
     </p>
   </div>
+  @if (store.guest()) {
+    <div class="border-t border-line-soft pt-4 lg:w-[400px] lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+      <p class="label-mark text-text">{{ t('lib.lockedTitle') }}</p>
+      <p class="mt-1.5 text-sm text-muted">
+        {{ t('lib.lockedText', { hours: store.me()?.ttlHours ?? 2, accountQuota: bytes(store.me()?.accountQuota ?? 0), accountHours: store.me()?.accountTtlHours ?? 24 }) }}
+      </p>
+      <button type="button" class="btn btn-primary mt-3 min-h-10 px-5 text-xs" data-menu (click)="store.toggleMenu('account')">
+        <app-icon name="user" [size]="14" /> {{ t('common.createAccount') }}
+      </button>
+    </div>
+  }
 </section>
 
-<div class="rise mt-6 flex flex-col gap-3 lg:flex-row lg:items-center" style="--d: 60ms">
+<div class="rise mt-5 flex flex-col gap-3 lg:flex-row lg:items-center" style="--d: 60ms">
   <div class="relative lg:w-80">
     <label for="search" class="sr-only">{{ t('lib.searchLabel') }}</label>
     <app-icon name="search" [size]="16" class="absolute top-1/2 left-3 -translate-y-1/2 text-dim" />
@@ -98,7 +88,7 @@
   </div>
 </div>
 
-<div class="mt-6 grid gap-4" [class]="view() === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'">
+<div class="mt-5 grid gap-4" [class]="view() === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'">
   @for (f of items(); track f.id) {
     <article
       class="pane rise group flex transition-colors hover:border-dim"
@@ -114,6 +104,11 @@
       >
         @if (f.thumb) {
           <img [src]="f.thumb" alt="" loading="lazy" class="size-full object-cover transition-transform duration-500 group-hover:scale-105" width="480" height="270" />
+        } @else if (f.kind === 'document') {
+          <span class="flex size-full flex-col items-center justify-center gap-2 text-yellow">
+            <app-icon name="file" [size]="view() === 'grid' ? 34 : 22" />
+            <span class="label text-text!">.{{ f.ext }}</span>
+          </span>
         } @else {
           <span class="flex size-full items-center justify-center gap-1">
             @for (b of [4, 8, 12, 6, 10, 14, 7, 11, 5, 9]; track $index) {
@@ -131,7 +126,7 @@
           <span class="absolute right-2 bottom-2 bg-base/90 px-1.5 py-0.5 text-[11px] font-bold tabular-nums">{{ dur(f.duration) }}</span>
         }
         <span class="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-          <span class="grid size-12 place-items-center bg-yellow text-ink shadow-[3px_3px_0_0_#000]"><app-icon name="play" [size]="18" /></span>
+          <span class="grid size-12 place-items-center bg-yellow text-ink shadow-[3px_3px_0_0_#000]"><app-icon [name]="f.kind === 'document' || f.kind === 'image' ? 'eye' : 'play'" [size]="18" /></span>
         </span>
       </button>
 
@@ -163,14 +158,14 @@
       </div>
 
       <div class="flex border-t border-line-soft" [class.sm:border-t-0]="view() === 'list'" [class.sm:border-l]="view() === 'list'">
-        @if (f.kind !== 'gif') {
+        @if (f.kind === 'video' || f.kind === 'audio') {
           <button type="button" class="lib-action" [title]="t('common.trim')" [attr.aria-label]="t('common.trim') + ' ' + f.name" (click)="open(f, 'trim')">
             <app-icon name="scissors" [size]="16" />
           </button>
-          <button type="button" class="lib-action" [title]="t('common.convert')" [attr.aria-label]="t('common.convert') + ' ' + f.name" (click)="open(f, 'convert')">
-            <app-icon name="convert" [size]="16" />
-          </button>
         }
+        <button type="button" class="lib-action" [title]="t('common.convert')" [attr.aria-label]="t('common.convert') + ' ' + f.name" (click)="open(f, 'convert')">
+          <app-icon name="convert" [size]="16" />
+        </button>
         <button type="button" class="lib-action" [title]="t('common.download')" [attr.aria-label]="t('common.download') + ' ' + f.name" (click)="save(f)">
           <app-icon name="download" [size]="16" />
         </button>
@@ -186,8 +181,8 @@
       </div>
     </article>
   } @empty {
-    <div class="pane rise col-span-full flex flex-col items-center gap-4 p-12 text-center">
-      <span class="grid size-16 place-items-center border border-yellow text-yellow"><app-icon name="library" [size]="26" /></span>
+    <div class="pane rise col-span-full flex flex-col items-center gap-3 p-8 text-center">
+      <span class="grid size-12 place-items-center border border-yellow text-yellow"><app-icon name="library" [size]="22" /></span>
       <p class="text-lg font-bold uppercase">{{ query() || filter() !== 'all' ? t('lib.noResults') : t('lib.empty') }}</p>
       <p class="max-w-sm text-sm text-muted">{{ t('lib.emptyText') }}</p>
       <button type="button" class="btn btn-primary mt-2" (click)="store.go('download')">
@@ -212,7 +207,7 @@
     </div>
     @if (p.kind === 'audio') {
       <audio [src]="p.url" controls autoplay class="w-full p-4"></audio>
-    } @else if (p.kind === 'gif') {
+    } @else if (p.kind === 'gif' || p.kind === 'image') {
       <img [src]="p.url" [alt]="p.name" class="mx-auto max-h-[75vh]" />
     } @else {
       <video [src]="p.url" controls autoplay playsinline class="max-h-[75vh] w-full bg-black"></video>

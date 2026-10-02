@@ -120,7 +120,7 @@ export class Trimmer {
   protected readonly libraryMedia = computed(() =>
     this.store
       .files()
-      .filter((f) => f.kind !== 'gif')
+      .filter((f) => f.kind === 'video' || f.kind === 'audio')
       .slice(0, 6),
   );
 

@@ -2,14 +2,16 @@
 // so it never competes with the content. Each section has its own scene and all
 // of them react to the pointer (no glow: the shapes themselves move), to how
 // fast it moves, and to clicks/taps, which send a shock wave through the scene:
-//   download → a field of download arrows drifting down; near the cursor they
-//              flow around it and grow
+//   download → a live transfer monitor: a scrolling throughput graph (the
+//              pointer speeds it up); sparks peel off the incoming edge and
+//              drift upward, bursting outward on a click
 //   trim     → an audio waveform the cursor scrubs, with playhead and brackets;
 //              clicks leave cut markers
-//   convert  → a field of Bauhaus shapes that aim at the cursor and morph;
-//              the shock wave converts them into the next shape
-//   library  → floating file cards (coloured like the library origins) that lift
-//              under the cursor and leave a trail
+//   convert  → quiet by design: nothing shows until the pointer is on the
+//              page, then a small cluster of posterised Bauhaus tiles follows
+//              it; a click fades in a few more where it lands
+//   library  → a calm bookshelf: muted spines in rows light up in the library's
+//              colours near the pointer and lift slightly, like being pulled out
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, viewChild } from '@angular/core';
 import { Section, Store } from '../core/store';
 
@@ -47,12 +49,49 @@ interface Frame {
   on: boolean;
 }
 
+/** Deterministic pseudo-random number in [0, 1) from two integers. */
+function hash(a: number, b: number): number {
+  let h = Math.imul(a + 374761393, 668265263) ^ Math.imul(b + 1274126177, 2246822519);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** A spark drifting away from the throughput graph. */
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  t0: number;
+  life: number;
+  color: string;
+}
+
+/** State of the download scene. */
+interface Transfer {
+  hist: number[];
+  scroll: number;
+  spawn: number;
+  particles: Particle[];
+}
+
 /** Smooth falloff: 1 at the cursor, 0 at `radius` and beyond. */
 function near(dx: number, dy: number, radius: number): number {
   const d = Math.hypot(dx, dy);
   if (d >= radius) return 0;
   const k = 1 - d / radius;
   return k * k * (3 - 2 * k);
+}
+
+/** The converter's Bauhaus colour field: a continuous value in [-1, 1] for any point. */
+const MOSAIC_PALETTE = [YELLOW, BLUE, RED];
+function mosaicField(x: number, y: number, t: number): number {
+  return (Math.sin(x * 0.011 + t * 0.5) + Math.sin(y * 0.015 - t * 0.33) + Math.sin((x - y) * 0.008 + t * 0.22)) / 3;
+}
+/** Flat, posterised colour at a field value. */
+function mosaicFlat(v: number): string {
+  const idx = Math.round(((v + 1) / 2) * MOSAIC_PALETTE.length) % MOSAIC_PALETTE.length;
+  return MOSAIC_PALETTE[((idx % MOSAIC_PALETTE.length) + MOSAIC_PALETTE.length) % MOSAIC_PALETTE.length];
 }
 
 @Component({
@@ -72,14 +111,15 @@ export class Scene {
   private pulses: { x: number; y: number; t: number }[] = [];
   /** Cut markers left by clicks on the trim scene. */
   private marks: { x: number; t: number }[] = [];
-  /** Library trail: card index → time it was last touched. */
+  /** Library trail: sector key → time it was last touched. */
   private readonly trail = new Map<number, number>();
+  private readonly dl: Transfer = { hist: [], scroll: 0, spawn: 0, particles: [] };
   private clock = 0;
   private readonly scenes: Record<Section, (f: Frame) => void> = {
-    download: (f) => this.arrows(f),
+    download: (f) => this.transfer(f),
     trim: (f) => this.waveform(f),
-    convert: (f) => this.shapes(f),
-    library: (f) => this.files(f),
+    convert: (f) => this.mosaic(f),
+    library: (f) => this.shelf(f),
   };
 
   /** Asks for a new frame (set once the canvas is ready). */
@@ -182,44 +222,202 @@ export class Scene {
     return k;
   }
 
-  /** Downloader: download arrows drift down in a staggered grid; near the cursor they flow around it. */
-  private arrows({ c, w, h, t, m, on }: Frame): void {
-    const gap = w < 700 ? 58 : 76;
-    const shift = t * 22;
-    const base = Math.floor(shift / gap);
-    const drift = shift - base * gap;
-    for (let r = -1, y = gap / 2 - gap + drift; y < h + gap; r++, y += gap) {
-      // Rows keep their identity (seed, stagger) while they scroll down.
-      const row = r - base;
-      const odd = ((row % 2) + 2) % 2;
-      for (let col = 0, x = gap / 2 + odd * (gap / 2); x < w + gap; col++, x += gap) {
-        const seed = row * 7.3 + col * 3.1;
-        const fx = x + Math.sin(t * 0.6 + seed) * 4;
-        const hit = this.shock(fx, y);
-        const k = on ? near(fx - m.x, y - m.y, 220) : 0;
-        // Idle they point down; near the cursor they point away from it.
-        const away = Math.atan2(y - m.y, fx - m.x);
-        const angle = Math.atan2(1 - k + Math.sin(away) * k, Math.cos(away) * k) - Math.PI / 2;
-        const size = 7 + Math.sin(t * 0.8 + seed) * 0.8 + k * 4 + hit * 4;
-        const color = (row + col) % 4 === 0 ? BLUE : YELLOW;
-        c.save();
-        c.translate(fx + (fx - m.x) * k * 0.08, y + (y - m.y) * k * 0.08);
-        c.rotate(angle);
-        c.strokeStyle = `rgb(${color} / ${0.28 + k * 0.35 + hit * 0.25})`;
-        c.lineWidth = 2 + k * 0.5;
-        c.beginPath();
-        c.moveTo(-size, -size * 0.4);
-        c.lineTo(0, size * 0.6);
-        c.lineTo(size, -size * 0.4);
-        // Every few, the full download glyph: a stem and a tray.
-        if ((row * 3 + col) % 5 === 0) {
-          c.moveTo(0, -size * 1.3);
-          c.lineTo(0, size * 0.6);
-          c.moveTo(-size, size * 1.3);
-          c.lineTo(size, size * 1.3);
+  /** Global strength of the most recent click (1 right after it, 0 once its wave is gone). */
+  private burst(): number {
+    let k = 0;
+    for (const p of this.pulses) k = Math.max(k, 1 - (this.clock - p.t) / WAVE_LIFE);
+    return k;
+  }
+
+  /**
+   * Downloader: a live transfer monitor. A throughput graph scrolls along the
+   * bottom two thirds of the screen (the pointer speeds it up); sparks peel off
+   * its incoming edge and drift upward, fading as they fall back. A click sends
+   * a burst of sparks out from where it landed.
+   */
+  private transfer({ c, w, h, t, dt, m, on }: Frame): void {
+    const s = this.dl;
+    const energy = Math.min(1, Math.hypot(m.vx, m.vy) / 1400);
+    const speed = Math.min(1, 0.32 + 0.16 * Math.sin(t * 0.7) * Math.sin(t * 0.23 + 1) + energy * 0.45 + this.burst() * 0.4);
+
+    // Throughput history: one sample every `step` px, scrolling left.
+    const step = 6;
+    const n = Math.ceil(w / step) + 2;
+    while (s.hist.length < n) s.hist.unshift(0.3 + hash(s.hist.length, 3) * 0.15);
+    if (s.hist.length > n) s.hist.splice(0, s.hist.length - n);
+    s.scroll += dt * 70;
+    while (s.scroll >= step) {
+      s.scroll -= step;
+      s.hist.shift();
+      s.hist.push(Math.max(0.05, Math.min(1, speed + (Math.random() - 0.5) * 0.14)));
+    }
+    const gy1 = h - 60;
+    const gh = h * 0.28;
+    const gx = (i: number) => i * step - s.scroll;
+    const gv = (i: number) => {
+      const x = gx(i);
+      return Math.min(1.15, s.hist[i] + (on ? near(x - m.x, 0, 170) * 0.22 : 0));
+    };
+    const gy = (i: number) => gy1 - gv(i) * gh;
+
+    // Graph: dashed level lines, filled area, live line and a smoothed average.
+    c.fillStyle = `rgb(${MUTED} / 0.12)`;
+    for (let k = 1; k <= 4; k++) {
+      const y = Math.round(gy1 - (gh * k) / 4);
+      for (let x = 0; x < w; x += 14) c.fillRect(x, y, 7, 1);
+    }
+    c.fillRect(0, gy1, w, 1);
+    c.beginPath();
+    c.moveTo(gx(0), gy1);
+    for (let i = 0; i < n; i++) c.lineTo(gx(i), gy(i));
+    c.lineTo(gx(n - 1), gy1);
+    c.closePath();
+    const fill = c.createLinearGradient(0, gy1 - gh, 0, gy1);
+    fill.addColorStop(0, `rgb(${YELLOW} / 0.16)`);
+    fill.addColorStop(1, `rgb(${YELLOW} / 0)`);
+    c.fillStyle = fill;
+    c.fill();
+    c.beginPath();
+    for (let i = 0; i < n; i++) (i ? c.lineTo : c.moveTo).call(c, gx(i), gy(i));
+    c.strokeStyle = `rgb(${YELLOW} / 0.55)`;
+    c.lineWidth = 2;
+    c.stroke();
+    c.beginPath();
+    let avg = s.hist[0];
+    for (let i = 0; i < n; i++) {
+      avg += (s.hist[i] - avg) * 0.08;
+      (i ? c.lineTo : c.moveTo).call(c, gx(i), gy1 - avg * gh);
+    }
+    c.strokeStyle = `rgb(${BLUE} / 0.45)`;
+    c.lineWidth = 1.5;
+    c.stroke();
+    if (on && m.y > gy1 - gh - 80) {
+      // Crosshair reading the graph under the pointer.
+      const i = Math.max(0, Math.min(n - 1, Math.round((m.x + s.scroll) / step)));
+      c.fillStyle = `rgb(${MUTED} / 0.25)`;
+      c.fillRect(Math.round(m.x), gy1 - gh - 20, 1, gh + 20);
+      c.fillStyle = `rgb(${YELLOW} / 0.8)`;
+      c.fillRect(m.x - 4, gy(i) - 4, 8, 8);
+    }
+
+
+    // Sparks peel off the incoming edge (the newest sample) and drift upward.
+    s.spawn += dt * (4 + speed * 26);
+    while (s.spawn >= 1) {
+      s.spawn -= 1;
+      if (s.particles.length > 160) break;
+      const x = gx(n - 1);
+      const y = gy(n - 1);
+      s.particles.push({
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 18,
+        vy: -(30 + Math.random() * 55),
+        t0: t,
+        life: 1.1 + Math.random() * 0.9,
+        color: Math.random() < 0.25 ? BLUE : YELLOW,
+      });
+    }
+    // A click bursts a handful of sparks outward from where it landed.
+    for (const p of this.pulses) {
+      if (this.clock - p.t >= dt + 0.001 || p.y > gy1 + 40) continue;
+      for (let k = 0; k < 14; k++) {
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.8;
+        const sp = 60 + Math.random() * 130;
+        s.particles.push({
+          x: p.x,
+          y: p.y,
+          vx: Math.cos(angle) * sp,
+          vy: Math.sin(angle) * sp,
+          t0: t,
+          life: 0.7 + Math.random() * 0.6,
+          color: Math.random() < 0.4 ? BLUE : YELLOW,
+        });
+      }
+    }
+    const gravity = 90;
+    s.particles = s.particles.filter((p) => {
+      const age = t - p.t0;
+      const k = age / p.life;
+      if (k >= 1) return false;
+      const x = p.x + p.vx * age;
+      const y = p.y + p.vy * age + 0.5 * gravity * age * age;
+      c.fillStyle = `rgb(${p.color} / ${(1 - k) * 0.85})`;
+      c.fillRect(x - 1.5, y - 1.5, 3, 3);
+      return true;
+    });
+  }
+
+  /**
+   * Converter: kept deliberately quiet. Nothing is drawn at all until the
+   * pointer is on the page, and then only a small, soft cluster of posterised
+   * Bauhaus tiles follows it closely; a click fades in a few more where it
+   * lands. It never spans the screen, so it can't compete with the panel on
+   * top of it.
+   */
+  private mosaic({ c, t, m, on }: Frame): void {
+    const tile = 24;
+    const radius = 85;
+    const draw = (ox: number, oy: number, strength: number) => {
+      const x0 = Math.floor((ox - radius) / tile) * tile;
+      const y0 = Math.floor((oy - radius) / tile) * tile;
+      for (let y = y0; y < oy + radius; y += tile) {
+        for (let x = x0; x < ox + radius; x += tile) {
+          const cx = x + tile / 2;
+          const cy = y + tile / 2;
+          const d = Math.hypot(cx - ox, cy - oy);
+          if (d > radius) continue;
+          const k = (1 - d / radius) * strength;
+          c.fillStyle = `rgb(${mosaicFlat(mosaicField(cx, cy, t))} / ${k * 0.3})`;
+          c.fillRect(x + 1, y + 1, tile - 2, tile - 2);
         }
-        c.stroke();
-        c.restore();
+      }
+    };
+    if (on) draw(m.x, m.y, 1);
+    for (const p of this.pulses) {
+      const age = t - p.t;
+      if (age < WAVE_LIFE) draw(p.x, p.y, 1 - age / WAVE_LIFE);
+    }
+  }
+
+  /**
+   * Library: a calm, sparse bookshelf — plenty of empty space between spines
+   * so it never reads as busy. Near the pointer a few spines light up in the
+   * library's colours (downloads, clips, conversions, uploads) and lift
+   * slightly, like being pulled out to read, leaving a brief trail. A click
+   * only gives the spines it lands on a soft, contained flash, not a sweep
+   * across the page.
+   */
+  private shelf({ c, w, h, t, m, on }: Frame): void {
+    const small = w < 700;
+    const barW = small ? 10 : 14;
+    const gap = small ? 12 : 18;
+    const pitch = barW + gap;
+    const shelfH = small ? 112 : 152;
+    const cols = Math.ceil(w / pitch) + 1;
+    const rows = Math.ceil(h / shelfH);
+    const colors = [YELLOW, BLUE, RED, MUTED];
+    const now = performance.now();
+    for (let row = 0; row < rows; row++) {
+      const board = row * shelfH + shelfH;
+      c.fillStyle = `rgb(${MUTED} / 0.12)`;
+      c.fillRect(0, board, w, 1);
+      for (let col = 0; col < cols; col++) {
+        const i = row * cols + col;
+        const x = col * pitch;
+        const height = shelfH * 0.26 + hash(i, row) * shelfH * 0.4;
+        const top = board - height;
+        const cx = x + barW / 2;
+        const cy = (top + board) / 2;
+        const near0 = on ? near(cx - m.x, cy - m.y, 110) : 0;
+        if (near0 > 0.4) this.trail.set(i, now);
+        const touched = this.trail.get(i);
+        const fade = touched ? Math.max(0, 1 - (now - touched) / 1500) : 0;
+        if (touched && !fade) this.trail.delete(i);
+        const k = Math.min(1, Math.max(near0, fade * 0.5, this.shock(cx, cy) * 0.4));
+        const lift = k * 7;
+        c.fillStyle = k > 0.05 ? `rgb(${colors[i % 4]} / ${0.14 + k * 0.4})` : `rgb(${MUTED} / 0.1)`;
+        c.fillRect(x, top - lift, barW, height);
       }
     }
   }
@@ -271,99 +469,4 @@ export class Scene {
     c.fillRect(head - 1.5, 0, 3, h);
   }
 
-  /** Converter: shapes aim at the cursor and morph near it; a click wave converts them. */
-  private shapes({ c, w, h, t, m, on }: Frame): void {
-    const gap = w < 700 ? 58 : 76;
-    const colors = [YELLOW, BLUE, RED];
-    for (let row = 0, y = gap / 2; y < h + gap; row++, y += gap) {
-      for (let col = 0, x = gap / 2 + (row % 2) * (gap / 2); x < w + gap; col++, x += gap) {
-        const seed = row * 7.3 + col * 3.1;
-        // Idle life: every shape floats in a small loop, breathes and turns slowly.
-        const fx = x + Math.sin(t * 0.6 + seed) * 7;
-        const fy = y + Math.cos(t * 0.5 + seed * 1.3) * 7;
-        const hit = this.shock(fx, fy);
-        const kind = ((row + col) % 3 + (hit > 0.2 ? 1 : 0)) % 3;
-        const k = on ? near(fx - m.x, fy - m.y, 220) : 0;
-        const idleAngle = t * 0.35 + seed;
-        const angle = Math.atan2(m.y - fy, m.x - fx) * k + (1 - k) * idleAngle;
-        const size = 9 + Math.sin(t * 0.8 + seed) * 1.2 + k * 5 + hit * 3;
-        // Shapes near the cursor lean slightly towards it.
-        const ox = fx - x + (m.x - fx) * k * 0.06;
-        const oy = fy - y + (m.y - fy) * k * 0.06;
-        c.save();
-        c.translate(x + ox, y + oy);
-        c.rotate(angle);
-        c.strokeStyle = `rgb(${colors[kind]} / ${0.3 + k * 0.3 + hit * 0.2})`;
-        c.lineWidth = 2 + k * 0.5;
-        c.beginPath();
-        if (kind === 2) {
-          c.moveTo(size * 1.2, 0);
-          c.lineTo(-size * 0.7, size);
-          c.lineTo(-size * 0.7, -size);
-          c.closePath();
-        } else {
-          // Circle ↔ square: the corner radius shrinks (or grows) near the cursor.
-          const r = kind === 0 ? size * (1 - k) : size * k;
-          c.roundRect(-size, -size, size * 2, size * 2, r);
-        }
-        c.stroke();
-        c.restore();
-      }
-    }
-  }
-
-  /** Library: floating file cards lift under the cursor, leave a trail and flash with the click wave. */
-  private files({ c, w, h, t, m, on }: Frame): void {
-    const gap = w < 700 ? 62 : 84;
-    const now = performance.now();
-    const colors = [YELLOW, BLUE, RED, MUTED];
-    for (let row = 0, y = gap / 2; y < h + gap; row++, y += gap) {
-      for (let col = 0, x = gap / 2 + (row % 2) * (gap / 2); x < w + gap; col++, x += gap) {
-        const i = row * 1000 + col;
-        const seed = row * 5.7 + col * 2.3;
-        const fx = x + Math.sin(t * 0.45 + seed) * 5;
-        const fy = y + Math.cos(t * 0.5 + seed * 1.3) * 5;
-        const k = on ? near(fx - m.x, fy - m.y, 200) : 0;
-        if (k > 0.35) this.trail.set(i, now);
-        const touched = this.trail.get(i);
-        const fade = touched ? Math.max(0, 1 - (now - touched) / 1600) : 0;
-        if (touched && !fade) this.trail.delete(i);
-        const lit = Math.max(k, fade * 0.6, this.shock(fx, fy) * 1.2);
-        const s = 1 + lit * 0.3;
-        const cw = 8 * s;
-        const ch = 11 * s;
-        const fold = 4 * s;
-        const color = colors[(row * 3 + col) % 4];
-        c.save();
-        c.translate(fx, fy - lit * 6);
-        c.rotate(Math.sin(t * 0.4 + seed) * 0.1 * (1 - lit));
-        c.beginPath();
-        c.moveTo(-cw, -ch);
-        c.lineTo(cw - fold, -ch);
-        c.lineTo(cw, -ch + fold);
-        c.lineTo(cw, ch);
-        c.lineTo(-cw, ch);
-        c.closePath();
-        if (lit > 0.03) {
-          c.fillStyle = `rgb(${color} / ${lit * 0.22})`;
-          c.fill();
-        }
-        c.strokeStyle = `rgb(${color} / ${0.26 + lit * 0.4})`;
-        c.lineWidth = 1.8;
-        c.stroke();
-        // Folded corner and two "content" lines.
-        c.beginPath();
-        c.moveTo(cw - fold, -ch);
-        c.lineTo(cw - fold, -ch + fold);
-        c.lineTo(cw, -ch + fold);
-        c.moveTo(-cw * 0.5, 0);
-        c.lineTo(cw * 0.5, 0);
-        c.moveTo(-cw * 0.5, ch * 0.45);
-        c.lineTo(cw * 0.2, ch * 0.45);
-        c.lineWidth = 1.4;
-        c.stroke();
-        c.restore();
-      }
-    }
-  }
 }

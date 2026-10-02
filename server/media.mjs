@@ -206,7 +206,7 @@ export const FORMAT_CODECS = {
   ogv: ['theora'],
 };
 /** Audio formats: FFmpeg codec arguments, file extension and whether it is lossless. */
-const AUDIO_FORMATS = {
+export const AUDIO_FORMATS = {
   mp3: [['-c:a', 'libmp3lame'], 'mp3', false],
   aac: [['-c:a', 'aac'], 'm4a', false],
   ogg: [['-c:a', 'libvorbis'], 'ogg', false],
@@ -219,7 +219,7 @@ const AUDIO_FORMATS = {
   aiff: [['-c:a', 'pcm_s16be'], 'aiff', true],
 };
 /** Animated image formats. */
-const IMAGE_FORMATS = ['gif', 'webp', 'apng'];
+export const IMAGE_FORMATS = ['gif', 'webp', 'apng'];
 export const FORMATS = [...Object.keys(FORMAT_CODECS), ...IMAGE_FORMATS, ...Object.keys(AUDIO_FORMATS)];
 
 /** Output presets: `cover` crops to fill the frame, `fit` limits the height. */
@@ -296,4 +296,46 @@ export function convertArgs(src, info, o) {
 
   if (['mp4', 'mov', 'm4v'].includes(o.format)) args.push('-movflags', '+faststart');
   return { args, ext: o.format === 'mpeg' ? 'mpg' : o.format };
+}
+
+// ------------------------------------------------------------ still images
+
+/** Encoder arguments per still image format, by quality (high, balanced, light). */
+const STILL = {
+  png: () => ['-c:v', 'png', '-update', '1'],
+  jpg: (q) => ['-c:v', 'mjpeg', '-q:v', String([2, 4, 8][q]), '-pix_fmt', 'yuvj420p', '-update', '1'],
+  webp: (q) => ['-c:v', 'libwebp', '-quality', String([92, 78, 60][q])],
+  avif: (q) => ['-c:v', 'libaom-av1', '-still-picture', '1', '-crf', String([18, 28, 38][q]), '-pix_fmt', 'yuv420p'],
+  bmp: () => ['-c:v', 'bmp', '-update', '1'],
+  tiff: () => ['-c:v', 'tiff', '-update', '1'],
+  ico: () => ['-c:v', 'png', '-pix_fmt', 'rgba'],
+  gif: () => [],
+};
+export const STILL_FORMATS = Object.keys(STILL);
+
+/**
+ * Builds the FFmpeg arguments that save one still image: the picture itself, or
+ * a frame from ~10% into a video/animation. Profiles resize it like a video;
+ * ICO is always fitted into 256×256 (the format's limit).
+ * @param {{format:string,preset:string,quality:string}} o
+ * @returns {{args:string[], ext:string}}
+ */
+export function stillArgs(src, info, o) {
+  if (!info.hasVideo) throw new AppError(400, 'no_video_track', 'The file has no picture');
+  if (!STILL[o.format]) throw new AppError(400, 'bad_format', `Unsupported format: ${o.format}`);
+  const q = QUALITY[o.quality] ?? 1;
+  const at = info.duration > 2 ? Math.min(info.duration * 0.1, 30) : 0;
+  const preset = PRESETS[o.preset] ?? null;
+  const filters = [];
+  if (o.format === 'ico') filters.push('scale=256:256:force_original_aspect_ratio=decrease');
+  else if (preset?.cover) filters.push(cover(...preset.cover));
+  else if (preset?.fit) filters.push(`scale=-2:'min(${preset.fit},ih)'`);
+  // 4:2:0 encoders need even sizes.
+  if (['jpg', 'avif'].includes(o.format)) filters.push('scale=trunc(iw/2)*2:trunc(ih/2)*2');
+  let vf = filters.join(',') || 'null';
+  if (o.format === 'gif') vf = `${vf},split[a][b];[a]palettegen[p];[b][p]paletteuse`;
+  return {
+    args: [...(at ? ['-ss', at.toFixed(2)] : []), '-i', src, '-frames:v', '1', '-an', '-vf', vf, ...STILL[o.format](q)],
+    ext: o.format,
+  };
 }

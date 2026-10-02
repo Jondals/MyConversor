@@ -10,16 +10,16 @@ import { Downloader } from './features/downloader/downloader';
 import { Library } from './features/library/library';
 import { Trimmer } from './features/trimmer/trimmer';
 import { Account } from './shared/account';
-import { Player, Playlist } from './shared/player';
+import { Playlist } from './shared/player';
 import { Flag } from './shared/flag';
 import { Scene } from './shared/scene';
 
-export const VERSION = '2.4.2';
+export const VERSION = '3.0.0';
 export const AUTHOR = { name: 'jondals', url: 'https://github.com/Jondals' };
 
 @Component({
   selector: 'app-root',
-  imports: [Icon, Scene, Flag, Downloader, Trimmer, Converter, Library, Account, Player, Playlist],
+  imports: [Icon, Scene, Flag, Downloader, Trimmer, Converter, Library, Account, Playlist],
   templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {

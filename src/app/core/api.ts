@@ -1,7 +1,7 @@
 // Typed client for the MyConversor server API (see server/app.mjs).
 import { Injectable } from '@angular/core';
 
-export type MediaKind = 'video' | 'audio' | 'gif';
+export type MediaKind = 'video' | 'audio' | 'gif' | 'image' | 'document';
 export type Origin = 'download' | 'upload' | 'trim' | 'convert';
 
 /** A file in the user's library on the MyConversor server. */
@@ -94,6 +94,7 @@ export interface TrimOptions {
 }
 
 export interface ConvertOptions {
+  group: string;
   format: string;
   codec: string | null;
   preset: string;
@@ -138,6 +139,10 @@ export class Api {
   /** Signs out and returns a fresh guest session. */
   logout(): Promise<Me> {
     return this.request('POST', '/auth/logout');
+  }
+  /** Deletes the account (or guest) with all its files and returns a fresh guest session. */
+  deleteAccount(): Promise<Me> {
+    return this.request('DELETE', '/me');
   }
   /** Uploads a profile photo (PNG/JPG/WebP/GIF, 2 MB max). */
   async setAvatar(image: File): Promise<Me> {
@@ -207,7 +212,7 @@ export class Api {
   }
 
   /** Real server status: it answers and FFmpeg and yt-dlp are installed. */
-  health(): Promise<{ ok: boolean }> {
+  health(): Promise<{ ok: boolean; tools: { ffmpeg: boolean; ytdlp: boolean; office: boolean } }> {
     return this.request('GET', '/health');
   }
 
