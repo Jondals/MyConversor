@@ -14,7 +14,7 @@ import { Playlist } from './shared/player';
 import { Flag } from './shared/flag';
 import { Scene } from './shared/scene';
 
-export const VERSION = '3.0.0';
+export const VERSION = '3.0.1';
 export const AUTHOR = { name: 'jondals', url: 'https://github.com/Jondals' };
 
 @Component({

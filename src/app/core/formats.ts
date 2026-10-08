@@ -81,7 +81,7 @@ export const TARGETS: Record<Group, Target[]> = {
 };
 
 const AUDIO_EXTS = ['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'ac3', 'aiff', 'alac'];
-const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'avif', 'ico'];
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'avif', 'ico', 'svg'];
 type DocType = 'text' | 'sheet' | 'slides' | 'pdf';
 const DOC_TYPES: Record<DocType, string[]> = {
   text: ['doc', 'docx', 'odt', 'rtf', 'txt', 'html', 'htm'],

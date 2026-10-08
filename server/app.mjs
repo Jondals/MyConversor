@@ -7,7 +7,7 @@
 // removes its folder from disk immediately; expired files are removed by a
 // janitor every 5 minutes.
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { basename, extname, join, resolve, sep } from 'node:path';
+import { basename, dirname, extname, join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import compression from 'compression';
 import express from 'express';
@@ -18,6 +18,7 @@ import { AppError } from './errors.mjs';
 import { PRESETS, convertArgs, probe, run, stillArgs, strip, thumbnail, trimArgs } from './media.mjs';
 import { downloadMusic, resolveMusic } from './music.mjs';
 import { createOffice } from './office.mjs';
+import { rasterizeSvg } from './svg.mjs';
 
 const COOKIE = 'mc_session';
 const HOUR = 3600_000;
@@ -146,16 +147,25 @@ export function createApp(options) {
     return { id, dir: join(filesDir, id) };
   }
 
+  /** Path FFmpeg can read: the file itself, or a PNG drawn from it when it is an SVG. */
+  function readable(path) {
+    if (extname(path).toLowerCase() !== '.svg') return path;
+    const png = join(dirname(path), 'preview.png');
+    if (!existsSync(png)) rasterizeSvg(path, png);
+    return png;
+  }
+
   /** Probes a finished file, makes its thumbnail and registers it. */
   async function storeFile(userId, path, name, origin, extra = {}) {
     const ext = extname(path).slice(1).toLowerCase();
     // Documents are never probed: FFmpeg would read a .txt as ANSI art "video".
-    const info = kindOf(ext) === 'document' ? EMPTY_INFO : await probe(bins.ffmpeg, path);
+    const media = kindOf(ext) === 'document' ? path : readable(path);
+    const info = kindOf(ext) === 'document' ? EMPTY_INFO : await probe(bins.ffmpeg, media);
     const id = basename(resolve(path, '..'));
     let thumb = false;
     if (info.hasVideo) {
       try {
-        await thumbnail(bins.ffmpeg, path, join(filesDir, id, 'thumb.jpg'), info.duration);
+        await thumbnail(bins.ffmpeg, media, join(filesDir, id, 'thumb.jpg'), info.duration);
         thumb = true;
       } catch {
         /* thumbnails are optional */
@@ -452,7 +462,13 @@ export function createApp(options) {
       throw err instanceof AppError ? err : new AppError(400, 'upload_interrupted', 'Upload interrupted');
     }
     // Media and images must be readable by FFmpeg; documents are kept as they are.
-    const info = kindOf(ext) === 'document' ? null : await probe(bins.ffmpeg, target);
+    let info = null;
+    try {
+      info = kindOf(ext) === 'document' ? null : await probe(bins.ffmpeg, readable(target));
+    } catch (err) {
+      rmSync(dir, { recursive: true, force: true });
+      throw err;
+    }
     if (info && !info.hasVideo && !info.hasAudio) {
       rmSync(dir, { recursive: true, force: true });
       throw new AppError(415, 'not_media', 'Not a supported video, audio, image or document');
@@ -640,8 +656,9 @@ export function createApp(options) {
       if (needsOffice(src.ext, group)) {
         return produce(job, name, 'convert', src, (dir) => office.convert(src.path, src.ext, b.format, dir, signal));
       }
-      const info = await probe(bins.ffmpeg, src.path);
-      const { args, ext } = group === 'image' ? stillArgs(src.path, info, o) : convertArgs(src.path, info, o);
+      const input = readable(src.path);
+      const info = await probe(bins.ffmpeg, input);
+      const { args, ext } = group === 'image' ? stillArgs(input, info, o) : convertArgs(input, info, o);
       return encode(job, signal, args, ext, group === 'image' ? 0 : info.duration, name, 'convert', src);
     });
     res.json(publicJob(job));

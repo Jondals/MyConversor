@@ -291,6 +291,22 @@ describe('MyConversor', () => {
     assert.equal(bad.code, 'bad_format');
   });
 
+  test('SVG files are drawn and convert to every still format', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="60"><rect width="100" height="60" fill="red"/><circle cx="50" cy="30" r="20" fill="blue"/></svg>';
+    const res = await alice.upload('logo.svg', new TextEncoder().encode(svg));
+    assert.equal(res.status, 200);
+    const file = await res.json();
+    assert.equal(file.kind, 'image');
+    assert.ok(file.thumb);
+    for (const format of ['png', 'jpg', 'webp', 'avif', 'bmp', 'tiff', 'ico', 'gif']) {
+      const job = await alice.wait(await alice.json('POST', `/api/files/${file.id}/convert`, { group: 'image', format }));
+      assert.equal(job.status, 'done', `${format}: ${job.error}`);
+      assert.equal(job.file.ext, format);
+    }
+    const broken = await alice.upload('broken.svg', new TextEncoder().encode('<svg'));
+    assert.equal(broken.status, 415);
+  });
+
   test('a video frame can be saved as an image', async () => {
     const job = await alice.wait(await alice.json('POST', `/api/files/${upload.id}/convert`, { group: 'image', format: 'png' }));
     assert.equal(job.status, 'done', job.error);

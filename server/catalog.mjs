@@ -5,7 +5,7 @@ import { AUDIO_FORMATS, FORMAT_CODECS, IMAGE_FORMATS } from './media.mjs';
 
 export const AUDIO_EXTS = new Set(['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'ac3', 'aiff', 'alac']);
 /** Still images (FFmpeg reads them; WebP is treated as still because FFmpeg can't decode animated WebP). */
-export const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'avif', 'ico']);
+export const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'avif', 'ico', 'svg']);
 /** Animated images handled like short silent videos. */
 export const ANIMATED_EXTS = new Set(['gif']);
 /** Documents (converted with LibreOffice), by family. */

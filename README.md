@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v3.0.0
+  Desarrollado por <a href="https://github.com/Jondals">jondals</a> · v3.0.1
 </p>
 
 ---
@@ -89,7 +89,7 @@ Convertidor **universal**: según lo que subas (o elijas de tu biblioteca), solo
 - 🎞️ **Vídeo**: MP4 (H.264/H.265), WebM (VP9/AV1), MKV (H.264/H.265/AV1/VP9), MOV (ProRes/H.264), AVI, M4V, FLV, MPEG y OGV.
 - 🖼️ **Animación**: GIF, WebP animado y APNG.
 - 🎵 **Audio**: con pérdida (MP3, AAC, OGG, Opus, WMA, AC3) y sin pérdida (WAV, FLAC, ALAC, AIFF).
-- 🖼️ **Imagen**: PNG, JPG, WebP, AVIF, BMP, TIFF, ICO y GIF (fijo). También saca un fotograma de cualquier vídeo o GIF como imagen.
+- 🖼️ **Imagen**: PNG, JPG, WebP, AVIF, BMP, TIFF, ICO y GIF (fijo). También acepta SVG como origen (se dibuja con resvg, porque FFmpeg no lee SVG) y saca un fotograma de cualquier vídeo o GIF como imagen.
 - 📄 **Documento** (necesita LibreOffice en el servidor, ver Configuración): PDF, DOCX, ODT, RTF, TXT, HTML, EPUB, XLSX, ODS, CSV, PPTX y ODP. Incluye PDF ⇄ Word/PowerPoint/Excel, exportar una página de un PDF o de un documento como imagen, etc.
 - Perfiles de vídeo e imagen: Original, Reels/TikTok (9:16), Instagram (1:1), YouTube 4K, YouTube HD, HD 720p, SD 480p y Discord (< 25 MB).
 - Códec de vídeo, calidad (alta/media/ligera), bitrate de audio y fotogramas por segundo (animación) — cada ajuste se desactiva solo cuando no aplica a la salida elegida, en vez de desaparecer.
@@ -197,6 +197,7 @@ server/                   # API (Node + Express)
 ├── downloader.mjs        # yt-dlp (allowed domains only, quality/format selection)
 ├── media.mjs             # FFmpeg: probe, thumbnails, trim, media and still-image conversions
 ├── catalog.mjs           # What each file extension is and what it can become (client mirrors this)
+├── svg.mjs               # SVG → PNG con resvg (FFmpeg no decodifica SVG)
 ├── office.mjs            # LibreOffice: document conversions (optional, see Configuración)
 ├── db.mjs                # JSON database (users, sessions, files)
 ├── errors.mjs            # Errors with a code that the web translates
@@ -221,7 +222,7 @@ test/app.test.mjs         # The test
   - Los archivos que FFmpeg no reconoce (p. ej. `.txt`) se aceptan como **documento**, no se rechazan.
 - ✂️ **Recortes**: copia directa, reencuadre, volumen y silencio.
 - 🔄 **Conversiones de vídeo/audio/animación**: MP4, WebM, MKV H.265 cuadrado, AVI, GIF, WebP, MP3, Opus, OGG y FLAC.
-- 🖼️ **Imágenes**: subida con miniatura y conversión a JPG, WebP, AVIF, BMP, TIFF, ICO y GIF; sacar un fotograma de un vídeo como imagen; se rechaza convertir una imagen a audio.
+- 🖼️ **Imágenes**: subida con miniatura (también SVG) y conversión a JPG, WebP, AVIF, BMP, TIFF, ICO y GIF; sacar un fotograma de un vídeo como imagen; se rechaza convertir una imagen a audio.
 - 📄 **Documentos** (si hay LibreOffice instalado; si no, prueba que el servidor lo dice con `office_missing`): TXT → PDF → DOCX/PPTX, una página de PDF como imagen, CSV → XLSX.
 - 🎵 **Música desde enlaces**:
   - Se reconocen YouTube y Spotify y se leen las páginas de Spotify.
